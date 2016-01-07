@@ -87,9 +87,11 @@ int Prepare::Run()
     {
         ReadNodeLevels(node_levels);
     }
+    std::vector<bool> node_represents_oneway;
+    ReadOneWayFlags( node_represents_oneway );
     util::DeallocatingVector<QueryEdge> contracted_edge_list;
     ContractGraph(max_edge_id, edge_based_edge_list, contracted_edge_list, is_core_node,
-                  node_levels);
+                  node_levels, std::move(node_represents_oneway));
     TIMER_STOP(contraction);
 
     util::SimpleLogger().Write() << "Contraction took " << TIMER_SEC(contraction) << " sec";
@@ -270,6 +272,7 @@ void Prepare::WriteNodeLevels(std::vector<float> &&in_node_levels) const
 
 void Prepare::ReadOneWayFlags(std::vector<bool> &oneway_flags) const
 {
+    std::cout << "Reading oneway flags from " << config.one_way_flags_path << std::endl;
     std::uint32_t number_of_bits;
     boost::filesystem::ifstream flag_stream(config.one_way_flags_path, std::ios::binary);
     flag_stream.read(reinterpret_cast<char *>(&number_of_bits), sizeof(number_of_bits));
@@ -390,8 +393,9 @@ Prepare::WriteContractedGraph(unsigned max_node_id,
     util::StaticGraph<EdgeData>::EdgeArrayEntry current_edge;
     for (const auto edge : util::irange<std::size_t>(0, contracted_edge_list.size()))
     {
+        // some self-loops are required for oneway handling. Need to assertthat we only keep these (TODO)
         // no eigen loops
-        BOOST_ASSERT(contracted_edge_list[edge].source != contracted_edge_list[edge].target);
+        // BOOST_ASSERT(contracted_edge_list[edge].source != contracted_edge_list[edge].target || node_represents_oneway[contracted_edge_list[edge].source]);
         current_edge.target = contracted_edge_list[edge].target;
         current_edge.data = contracted_edge_list[edge].data;
 
@@ -423,17 +427,26 @@ Prepare::WriteContractedGraph(unsigned max_node_id,
 /**
  \brief Build contracted graph.
  */
+<<<<<<< HEAD
 void Prepare::ContractGraph(
     const unsigned max_edge_id,
     util::DeallocatingVector<extractor::EdgeBasedEdge> &edge_based_edge_list,
     util::DeallocatingVector<QueryEdge> &contracted_edge_list,
     std::vector<bool> &is_core_node,
     std::vector<float> &inout_node_levels) const
+=======
+void Prepare::ContractGraph(const unsigned max_edge_id,
+                            DeallocatingVector<EdgeBasedEdge> &edge_based_edge_list,
+                            DeallocatingVector<QueryEdge> &contracted_edge_list,
+                            std::vector<bool> &is_core_node,
+                            std::vector<float> &inout_node_levels,
+                            std::vector<bool> &&node_represents_oneway) const
+>>>>>>> contraction handles cyclic edges
 {
     std::vector<float> node_levels;
     node_levels.swap(inout_node_levels);
 
-    Contractor contractor(max_edge_id + 1, edge_based_edge_list, std::move(node_levels));
+    Contractor contractor(max_edge_id + 1, edge_based_edge_list, std::move(node_levels), std::move(node_represents_oneway));
     contractor.Run(config.core_factor);
     contractor.GetEdges(contracted_edge_list);
     contractor.GetCoreMarker(is_core_node);
