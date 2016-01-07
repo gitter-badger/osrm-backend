@@ -895,6 +895,8 @@ class Contractor
                 }
             }
         }
+		//Check For One-Way Streets to decide on the creation of self-loops
+
         if (!RUNSIMULATION)
         {
             int iend = inserted_edges.size();

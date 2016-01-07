@@ -11,6 +11,8 @@
 
 #include <boost/filesystem.hpp>
 
+#include <cstddef>
+
 #include <vector>
 
 struct lua_State;
@@ -51,6 +53,7 @@ class Prepare
     std::size_t
     WriteContractedGraph(unsigned number_of_edge_based_nodes,
                          const util::DeallocatingVector<QueryEdge> &contracted_edge_list);
+    void ReadOneWayFlags(std::vector<bool> &oneway_flags) const;
     void FindComponents(unsigned max_edge_id,
                         const util::DeallocatingVector<extractor::EdgeBasedEdge> &edges,
                         std::vector<extractor::EdgeBasedNode> &nodes) const;
