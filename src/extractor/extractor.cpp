@@ -46,6 +46,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include <bitset>
 
 namespace osrm
 {
@@ -71,7 +72,7 @@ namespace extractor
  * graph
  *
  */
-int extractor::run()
+int Extractor::run()
 {
     try
     {
@@ -285,8 +286,8 @@ int extractor::run()
             return (SPECIAL_NODEID == node.forward_edge_based_node_id) xor
                    (SPECIAL_NODEID == node.reverse_edge_based_node_id);
         };
-        std::transform(node_represents_oneway_street.begin(), node_represents_oneway_street.end(),
-                       node_based_edge_list.begin(), node_based_edge_list.end(), isOneWay);
+        std::transform(node_based_edge_list.begin(), node_based_edge_list.end(),
+                       node_represents_oneway_street.begin(), isOneWay);
         WriteOneWayFlags(node_represents_oneway_street);
         TIMER_STOP(one_ways);
 
@@ -324,7 +325,7 @@ int extractor::run()
     \brief Setups scripting environment (lua-scripting)
     Also initializes speed profile.
 */
-void extractor::SetupScriptingEnvironment(lua_State *lua_state,
+void Extractor::SetupScriptingEnvironment(lua_State *lua_state,
                                           SpeedProfileProperties &speed_profile)
 {
     // open utility libraries string library;
@@ -362,7 +363,7 @@ void extractor::SetupScriptingEnvironment(lua_State *lua_state,
     speed_profile.has_turn_penalty_function = util::lua_function_exists(lua_state, "turn_function");
 }
 
-void extractor::FindComponents(unsigned max_edge_id,
+void Extractor::FindComponents(unsigned max_edge_id,
                                const util::DeallocatingVector<EdgeBasedEdge> &input_edge_list,
                                std::vector<EdgeBasedNode> &input_nodes) const
 {
@@ -440,7 +441,7 @@ void extractor::FindComponents(unsigned max_edge_id,
 /**
   \brief Build load restrictions from .restriction file
   */
-std::shared_ptr<RestrictionMap> extractor::LoadRestrictionMap()
+std::shared_ptr<RestrictionMap> Extractor::LoadRestrictionMap()
 {
     boost::filesystem::ifstream input_stream(config.restriction_file_name,
                                              std::ios::in | std::ios::binary);
@@ -457,7 +458,7 @@ std::shared_ptr<RestrictionMap> extractor::LoadRestrictionMap()
   \brief Load node based graph from .osrm file
   */
 std::shared_ptr<util::NodeBasedDynamicGraph>
-extractor::LoadNodeBasedGraph(std::unordered_set<NodeID> &barrier_nodes,
+Extractor::LoadNodeBasedGraph(std::unordered_set<NodeID> &barrier_nodes,
                               std::unordered_set<NodeID> &traffic_lights,
                               std::vector<QueryNode> &internal_to_external_node_map)
 {
@@ -498,7 +499,7 @@ extractor::LoadNodeBasedGraph(std::unordered_set<NodeID> &barrier_nodes,
  \brief Building an edge-expanded graph from node-based input and turn restrictions
 */
 std::pair<std::size_t, std::size_t>
-extractor::BuildEdgeExpandedGraph(std::vector<QueryNode> &internal_to_external_node_map,
+Extractor::BuildEdgeExpandedGraph(std::vector<QueryNode> &internal_to_external_node_map,
                                   std::vector<EdgeBasedNode> &node_based_edge_list,
                                   std::vector<bool> &node_is_startpoint,
                                   util::DeallocatingVector<EdgeBasedEdge> &edge_based_edge_list)
@@ -550,7 +551,7 @@ extractor::BuildEdgeExpandedGraph(std::vector<QueryNode> &internal_to_external_n
 /**
   \brief Writing info on original (node-based) nodes
  */
-void extractor::WriteNodeMapping(const std::vector<QueryNode> &internal_to_external_node_map)
+void Extractor::WriteNodeMapping(const std::vector<QueryNode> &internal_to_external_node_map)
 {
     boost::filesystem::ofstream node_stream(config.node_output_path, std::ios::binary);
     const unsigned size_of_mapping = internal_to_external_node_map.size();
@@ -566,7 +567,7 @@ void extractor::WriteNodeMapping(const std::vector<QueryNode> &internal_to_exter
 /**
   \brief Writing flags indicating one-way nodes.
   */
-void extractor::WriteOneWayFlags(const std::vector<bool> &flags)
+void Extractor::WriteOneWayFlags(const std::vector<bool> &flags)
 {
     // TODO this should be replaced with a FILE-based write using error checking
     std::uint32_t number_of_bits = flags.size();
@@ -574,17 +575,15 @@ void extractor::WriteOneWayFlags(const std::vector<bool> &flags)
     flag_stream.write(reinterpret_cast<const char *>(&number_of_bits), sizeof(number_of_bits));
     // putting bits in ints
     std::uint32_t chunk = 0;
-    while (flags.size() % 32 != 0) // avoid special case handling
-        flags.push_back(false);
-    for (std::size_t bit_nr = 0; bit_nr < number_of_bits; ++bit_nr)
+    for (std::size_t bit_nr = 0; bit_nr < number_of_bits;)
     {
-        chunk <<= 1;
-        chunk |= flags[bit_nr];
-        if (31 == (bit_nr % 32))
-        {
-            flag_stream.write(reinterpret_cast<const char *>(&chunk), sizeof(chunk));
-            chunk = 0;
-        }
+        std::bitset<32> chunk_bitset;
+        for (std::size_t chunk_bit = 0; chunk_bit < 32 and bit_nr < number_of_bits;
+             ++chunk_bit, ++bit_nr)
+            chunk_bitset[chunk_bit] = flags[bit_nr];
+
+        chunk = chunk_bitset.to_ulong();
+        flag_stream.write(reinterpret_cast<const char *>(&chunk), sizeof(chunk));
     }
 }
 
@@ -593,7 +592,7 @@ void extractor::WriteOneWayFlags(const std::vector<bool> &flags)
 
     Saves tree into '.ramIndex' and leaves into '.fileIndex'.
  */
-void extractor::BuildRTree(std::vector<EdgeBasedNode> node_based_edge_list,
+void Extractor::BuildRTree(std::vector<EdgeBasedNode> node_based_edge_list,
                            std::vector<bool> node_is_startpoint,
                            const std::vector<QueryNode> &internal_to_external_node_map)
 {
@@ -629,7 +628,7 @@ void extractor::BuildRTree(std::vector<EdgeBasedNode> node_based_edge_list,
                                  << " seconds";
 }
 
-void extractor::WriteEdgeBasedGraph(
+void Extractor::WriteEdgeBasedGraph(
     std::string const &output_file_filename,
     size_t const max_edge_id,
     util::DeallocatingVector<EdgeBasedEdge> const &edge_based_edge_list)

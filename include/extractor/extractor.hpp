@@ -11,10 +11,10 @@ namespace osrm
 namespace extractor
 {
 
-class extractor
+class Extractor
 {
   public:
-    extractor(ExtractorConfig extractor_config) : config(std::move(extractor_config)) {}
+    Extractor(ExtractorConfig extractor_config) : config(std::move(extractor_config)) {}
     int run();
 
   protected:
