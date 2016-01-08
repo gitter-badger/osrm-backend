@@ -7,6 +7,7 @@
 
 #include "contractor/crc32_processor.hpp"
 #include "util/graph_loader.hpp"
+#include "util/io.hpp"
 #include "util/integer_range.hpp"
 #include "util/lua_util.hpp"
 #include "util/osrm_exception.hpp"
@@ -275,24 +276,7 @@ void Prepare::WriteNodeLevels(std::vector<float> &&in_node_levels) const
 
 void Prepare::ReadOneWayFlags(std::vector<bool> &oneway_flags) const
 {
-    util::SimpleLogger().Write() << "Reading oneway flags from " << config.one_way_flags_path;
-    std::uint32_t number_of_bits;
-    boost::filesystem::ifstream flag_stream(config.one_way_flags_path, std::ios::binary);
-    flag_stream.read(reinterpret_cast<char *>(&number_of_bits), sizeof(number_of_bits));
-    oneway_flags.resize(number_of_bits);
-    // putting bits in ints
-    std::uint32_t chunks = (number_of_bits + 31) / 32;
-    std::size_t bit_position = 0;
-    std::uint32_t chunk;
-    for (std::size_t chunk_id = 0; chunk_id < chunks; ++chunk_id)
-    {
-        flag_stream.read(reinterpret_cast<char *>(&chunk), sizeof(chunk));
-        std::bitset<32> chunk_bits(chunk);
-        for (std::size_t bit = 0; bit < 32 && bit_position < number_of_bits; ++bit, ++bit_position)
-            oneway_flags[bit_position] = chunk_bits[bit];
-    }
-    util::SimpleLogger().Write() << "Read " << number_of_bits << " bits in " << chunks
-                                 << " Chunks from disk.";
+    util::deserializeFlags( config.one_way_flags_path, oneway_flags );
 }
 
 void Prepare::WriteCoreNodeMarker(std::vector<bool> &&in_is_core_node) const

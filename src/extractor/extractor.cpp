@@ -9,6 +9,7 @@
 #include "extractor/scripting_environment.hpp"
 
 #include "extractor/raster_source.hpp"
+#include "util/io.hpp"
 #include "util/make_unique.hpp"
 #include "util/simple_logger.hpp"
 #include "util/timing_util.hpp"
@@ -574,26 +575,7 @@ void Extractor::WriteNodeMapping(const std::vector<QueryNode> &internal_to_exter
   */
 void Extractor::WriteOneWayFlags(const std::vector<bool> &flags)
 {
-    // TODO this should be replaced with a FILE-based write using error checking
-    std::uint32_t number_of_bits = flags.size();
-    boost::filesystem::ofstream flag_stream(config.oneway_flags_file_name, std::ios::binary);
-    flag_stream.write(reinterpret_cast<const char *>(&number_of_bits), sizeof(number_of_bits));
-    // putting bits in ints
-    std::uint32_t chunk = 0;
-    std::size_t chunk_count = 0;
-    for (std::size_t bit_nr = 0; bit_nr < number_of_bits;)
-    {
-        std::bitset<32> chunk_bitset;
-        for (std::size_t chunk_bit = 0; chunk_bit < 32 && bit_nr < number_of_bits;
-             ++chunk_bit, ++bit_nr)
-            chunk_bitset[chunk_bit] = flags[bit_nr];
-
-        chunk = chunk_bitset.to_ulong();
-        ++chunk_count;
-        flag_stream.write(reinterpret_cast<const char *>(&chunk), sizeof(chunk));
-    }
-    util::SimpleLogger().Write() << "Wrote " << number_of_bits << " bits in " << chunk_count
-                           << " chunks (Oneway Flags).";
+    util::serializeFlags( config.oneway_flags_file_name, flags );
 }
 
 /**

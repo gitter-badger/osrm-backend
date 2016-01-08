@@ -1,9 +1,4 @@
-#include "extractor/extractor_options.hpp"
-#include "extractor/extractor.hpp"
-
-#include "contractor/contractor_options.hpp"
-#include "contractor/processing_chain.hpp"
-
+#include "util/io.hpp"
 #include "util/typedefs.hpp"
 
 #include <boost/test/unit_test.hpp>
@@ -12,28 +7,6 @@
 #include <string>
 
 const static std::string IO_TMP_FILE = "test_io.tmp";
-
-class ExtractorAccess : protected osrm::extractor::Extractor
-{
-  public:
-    ExtractorAccess() : Extractor(osrm::extractor::ExtractorConfig())
-    {
-        config.oneway_flags_file_name = IO_TMP_FILE;
-    }
-
-    void WriteFlags(const std::vector<bool> &flags) { WriteOneWayFlags(flags); }
-};
-
-class PrepareAccess : protected osrm::contractor::Prepare
-{
-  public:
-    PrepareAccess() : Prepare(osrm::contractor::ContractorConfig())
-    {
-        config.one_way_flags_path = IO_TMP_FILE;
-    }
-
-    void ReadFlags(std::vector<bool> &flags) { ReadOneWayFlags(flags); }
-};
 
 BOOST_AUTO_TEST_SUITE(osrm_io)
 
@@ -44,11 +17,8 @@ BOOST_AUTO_TEST_CASE(io_flags)
     for (std::size_t i = 0; i < flags_in.size(); ++i)
         flags_in[i] = ((i % 2) == 1);
 
-    ExtractorAccess extractor_access;
-    extractor_access.WriteFlags(flags_in);
-
-    PrepareAccess prepare_access;
-    prepare_access.ReadFlags(flags_out);
+    osrm::util::serializeFlags(IO_TMP_FILE, flags_in);
+    osrm::util::deserializeFlags(IO_TMP_FILE, flags_out);
 
     BOOST_REQUIRE_EQUAL(flags_in.size(), flags_out.size());
     BOOST_CHECK_EQUAL_COLLECTIONS(flags_out.begin(), flags_out.end(), flags_in.begin(),
