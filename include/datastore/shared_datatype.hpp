@@ -10,9 +10,7 @@
 
 namespace osrm
 {
-namespace engine
-{
-namespace datafacade
+namespace datastore
 {
 
 namespace
@@ -171,7 +169,6 @@ struct SharedDataTimestamp
     SharedDataType data;
     unsigned timestamp;
 };
-}
 }
 }
 
