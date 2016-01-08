@@ -374,25 +374,22 @@ class ShortestPathRouting final
             BOOST_ASSERT(!search_from_reverse_node ||
                          source_phantom.reverse_node_id != SPECIAL_NODEID);
 
-            bool is_loop = false;
             if (source_phantom.forward_node_id == target_phantom.forward_node_id &&
                 source_phantom.GetForwardWeightPlusOffset() >
                     target_phantom.GetForwardWeightPlusOffset())
             {
-                is_loop = true;
-                //              search_to_forward_node = search_from_reverse_node;
+                search_to_forward_node = search_from_reverse_node;
             }
             if (source_phantom.reverse_node_id == target_phantom.reverse_node_id &&
                 source_phantom.GetReverseWeightPlusOffset() >
                     target_phantom.GetReverseWeightPlusOffset())
             {
-                is_loop = true;
-                //              search_to_reverse_node = search_from_forward_node;
+                search_to_reverse_node = search_from_forward_node;
             }
 
             BOOST_ASSERT(search_from_forward_node || search_from_reverse_node);
 
-            if (!is_loop && (search_to_reverse_node || search_to_forward_node))
+            if (search_to_reverse_node || search_to_forward_node)
             {
                 if (allow_u_turn_at_via)
                 {
