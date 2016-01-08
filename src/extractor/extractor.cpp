@@ -648,7 +648,7 @@ void Extractor::WriteEdgeBasedGraph(
     const util::FingerPrint fingerprint = util::FingerPrint::GetValid();
     file_out_stream.write((char *)&fingerprint, sizeof(util::FingerPrint));
 
-    std::cout << "[extractor] Writing edge-based-graph egdes       ... " << std::flush;
+    SimpleLogger().Write() << "[extractor] Writing edge-based-graph egdes       ... " << std::flush;
     TIMER_START(write_edges);
 
     size_t number_of_used_edges = edge_based_edge_list.size();
@@ -661,7 +661,7 @@ void Extractor::WriteEdgeBasedGraph(
     }
 
     TIMER_STOP(write_edges);
-    std::cout << "ok, after " << TIMER_SEC(write_edges) << "s" << std::endl;
+    SimpleLogger().Write() << "ok, after " << TIMER_SEC(write_edges) << "s" << std::endl;
 
     util::SimpleLogger().Write() << "Processed " << number_of_used_edges << " edges";
     file_out_stream.close();
