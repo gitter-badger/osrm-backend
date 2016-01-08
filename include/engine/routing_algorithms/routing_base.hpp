@@ -162,12 +162,12 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                     std::vector<NodeID> &packed_path) const
     {
         std::int32_t best_weight = std::numeric_limits<std::int32_t>::max();
+        distance = INVALID_EDGE_WEIGHT;
         EdgeID best;
         for (const auto edge : facade->GetAdjacentEdgeRange(node))
         {
             const NodeID to = facade->GetTarget(edge);
             const EdgeData &data = facade->GetEdgeData(edge);
-            std::cout << "Edge: " << to << " " << data.distance << std::endl;
             if ((search_forward == data.forward or not search_forward == data.backward) and
                 to == node)
             {
