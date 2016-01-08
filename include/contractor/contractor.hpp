@@ -837,6 +837,9 @@ class Contractor
         {
             const ContractorEdgeData &in_data = contractor_graph->GetEdgeData(in_edge);
             const NodeID source = contractor_graph->GetTarget(in_edge);
+            if( source == node )
+              continue;
+
             if (RUNSIMULATION)
             {
                 BOOST_ASSERT(stats != nullptr);
@@ -856,11 +859,13 @@ class Contractor
             for (auto out_edge : contractor_graph->GetAdjacentEdgeRange(node))
             {
                 const ContractorEdgeData &out_data = contractor_graph->GetEdgeData(out_edge);
-                if (!out_data.forward)
+                if (!out_data.forward )
                 {
                     continue;
                 }
                 const NodeID target = contractor_graph->GetTarget(out_edge);
+                if( target == node )
+                  continue;
                 const int path_distance = in_data.distance + out_data.distance;
                 max_distance = std::max(max_distance, path_distance);
                 if (!heap.WasInserted(target))
@@ -886,6 +891,8 @@ class Contractor
                     continue;
                 }
                 const NodeID target = contractor_graph->GetTarget(out_edge);
+                if( target == node )
+                  continue;
                 const int path_distance = in_data.distance + out_data.distance;
                 const int distance = heap.GetKey(target);
                 if (source == target && node_represents_one_way[source])
