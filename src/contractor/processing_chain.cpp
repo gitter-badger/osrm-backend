@@ -22,6 +22,8 @@
 
 #include <tbb/parallel_sort.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <bitset>
 #include <chrono>
 #include <memory>
@@ -74,7 +76,7 @@ int Prepare::Run()
 
     util::DeallocatingVector<extractor::EdgeBasedEdge> edge_based_edge_list;
 
-    size_t max_edge_id = LoadEdgeExpandedGraph(
+    std::size_t max_edge_id = LoadEdgeExpandedGraph(
         config.edge_based_graph_path, edge_based_edge_list, config.edge_segment_lookup_path,
         config.edge_penalty_path, config.segment_speed_lookup_path);
 
@@ -146,10 +148,11 @@ std::size_t Prepare::LoadEdgeExpandedGraph(
     input_stream.read((char *)&fingerprint_loaded, sizeof(util::FingerPrint));
     fingerprint_loaded.TestPrepare(fingerprint_valid);
 
-    size_t number_of_edges = 0;
-    size_t max_edge_id = SPECIAL_EDGEID;
-    input_stream.read((char *)&number_of_edges, sizeof(size_t));
-    input_stream.read((char *)&max_edge_id, sizeof(size_t));
+    //TODO std::size_t can vary on systems. Our files are not transferable, but we might want to consider using a fixed size type for I/O
+    std::size_t number_of_edges = 0;
+    std::size_t max_edge_id = SPECIAL_EDGEID;
+    input_stream.read((char *)&number_of_edges, sizeof(std::size_t));
+    input_stream.read((char *)&max_edge_id, sizeof(std::size_t));
 
     edge_based_edge_list.resize(number_of_edges);
     util::SimpleLogger().Write() << "Reading " << number_of_edges
@@ -182,7 +185,6 @@ std::size_t Prepare::LoadEdgeExpandedGraph(
     {
         extractor::EdgeBasedEdge inbuffer;
         input_stream.read((char *)&inbuffer, sizeof(extractor::EdgeBasedEdge));
-
         if (update_edge_weights)
         {
             // Processing-time edge updates
@@ -272,7 +274,7 @@ void Prepare::WriteNodeLevels(std::vector<float> &&in_node_levels) const
 
 void Prepare::ReadOneWayFlags(std::vector<bool> &oneway_flags) const
 {
-    std::cout << "Reading oneway flags from " << config.one_way_flags_path << std::endl;
+    SimpleLogger().Write() << "Reading oneway flags from " << config.one_way_flags_path;
     std::uint32_t number_of_bits;
     boost::filesystem::ifstream flag_stream(config.one_way_flags_path, std::ios::binary);
     flag_stream.read(reinterpret_cast<char *>(&number_of_bits), sizeof(number_of_bits));
@@ -285,9 +287,10 @@ void Prepare::ReadOneWayFlags(std::vector<bool> &oneway_flags) const
     {
         flag_stream.read(reinterpret_cast<char *>(&chunk), sizeof(chunk));
         std::bitset<32> chunk_bits(chunk);
-        for( std::size_t bit = 0; bit < 32 and bit_position < number_of_bits; ++bit, ++bit_position )
+        for( std::size_t bit = 0; bit < 32 && bit_position < number_of_bits; ++bit, ++bit_position )
           oneway_flags[bit_position] = chunk_bits[bit];
     }
+    SimpleLogger().Write() << "Read " << number_of_bits << " bits in " << chunks << " Chunks from disk.";
 }
 
 void Prepare::WriteCoreNodeMarker(std::vector<bool> &&in_is_core_node) const
@@ -451,6 +454,8 @@ void Prepare::ContractGraph(const unsigned max_edge_id,
     contractor.GetEdges(contracted_edge_list);
     contractor.GetCoreMarker(is_core_node);
     contractor.GetNodeLevels(inout_node_levels);
+
+    std::cout << "Levels: " << inout_node_levels.size() << " Core: " << is_core_node.size() << " MEID: " << max_edge_id << std::endl;
 }
 }
 }

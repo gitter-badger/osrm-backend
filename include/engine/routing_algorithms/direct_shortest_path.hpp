@@ -114,13 +114,15 @@ class DirectShortestPathRouting final
         if (INVALID_EDGE_WEIGHT == distance)
         {
             if( source_phantom.forward_node_id == target_phantom.forward_node_id
-                and source_phantom.reverse_node_id == target_phantom.reverse_node_id ){
+                && source_phantom.reverse_node_id == target_phantom.reverse_node_id ){
               bool forward = source_phantom.forward_node_id != SPECIAL_NODEID;
               raw_route_data.alternative_path_length = INVALID_EDGE_WEIGHT;
               if( forward ){
-                super::SearchLoop( source_phantom.forward_node_id, forward, -source_phantom.GetForwardWeightPlusOffset(), target_phantom.GetForwardWeightPlusOffset(), distance, packed_leg );
+                BOOST_ASSERT( source_phantom.forward_node_id != SPECIAL_NODEID );
+                super::SearchLoop( source_phantom.forward_node_id, forward, -source_phantom.GetForwardWeightPlusOffset() + target_phantom.GetForwardWeightPlusOffset(), distance, packed_leg );
               } else {
-                super::SearchLoop( source_phantom.forward_node_id, not forward, -source_phantom.GetReverseWeightPlusOffset(), target_phantom.GetReverseWeightPlusOffset(), distance, packed_leg );
+                BOOST_ASSERT( source_phantom.reverse_node_id != SPECIAL_NODEID );
+                super::SearchLoop( source_phantom.reverse_node_id, not forward, -source_phantom.GetReverseWeightPlusOffset() + target_phantom.GetReverseWeightPlusOffset(), distance, packed_leg );
               }
               if( distance == INVALID_EDGE_WEIGHT ){
                 raw_route_data.shortest_path_length = INVALID_EDGE_WEIGHT;

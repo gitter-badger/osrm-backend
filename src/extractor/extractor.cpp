@@ -266,6 +266,7 @@ int Extractor::run()
         std::vector<EdgeBasedNode> node_based_edge_list;
         util::DeallocatingVector<EdgeBasedEdge> edge_based_edge_list;
         std::vector<bool> node_is_startpoint;
+        std::vector<bool> node_represents_oneway_street;
         std::vector<QueryNode> internal_to_external_node_map;
         auto graph_size =
             BuildEdgeExpandedGraph(internal_to_external_node_map, node_based_edge_list,
@@ -276,18 +277,22 @@ int Extractor::run()
 
         TIMER_STOP(expansion);
 
-        SimpleLogger().Write() << "Remembering One-Ways to " << config.oneway_flags_file_name;
+        SimpleLogger().Write() << "Remembering One-Ways for " << node_based_edge_list.size()
+                               << " edge-based-nodes.";
         TIMER_START(one_ways);
-        std::vector<bool> node_represents_oneway_street;
-        node_represents_oneway_street.reserve(node_based_edge_list.size() + 31);
-        node_represents_oneway_street.resize(node_based_edge_list.size(), false);
+
+        node_represents_oneway_street.resize(max_edge_id+1, false);
         const auto isOneWay = [](EdgeBasedNode const &node)
         {
-            return (SPECIAL_NODEID == node.forward_edge_based_node_id) xor
+            return (SPECIAL_NODEID == node.forward_edge_based_node_id) ^
                    (SPECIAL_NODEID == node.reverse_edge_based_node_id);
         };
-        std::transform(node_based_edge_list.begin(), node_based_edge_list.end(),
-                       node_represents_oneway_street.begin(), isOneWay);
+        for( const auto node : node_based_edge_list ){
+          if( isOneWay(node) ){
+            BOOST_ASSERT(SPECIAL_NODEID != node.forward_edge_based_node_id);
+            node_represents_oneway_street[node.forward_edge_based_node_id] = true;
+          }
+        }
         WriteOneWayFlags(node_represents_oneway_street);
         TIMER_STOP(one_ways);
 
@@ -575,16 +580,20 @@ void Extractor::WriteOneWayFlags(const std::vector<bool> &flags)
     flag_stream.write(reinterpret_cast<const char *>(&number_of_bits), sizeof(number_of_bits));
     // putting bits in ints
     std::uint32_t chunk = 0;
+    std::size_t chunk_count = 0;
     for (std::size_t bit_nr = 0; bit_nr < number_of_bits;)
     {
         std::bitset<32> chunk_bitset;
-        for (std::size_t chunk_bit = 0; chunk_bit < 32 and bit_nr < number_of_bits;
+        for (std::size_t chunk_bit = 0; chunk_bit < 32 && bit_nr < number_of_bits;
              ++chunk_bit, ++bit_nr)
             chunk_bitset[chunk_bit] = flags[bit_nr];
 
         chunk = chunk_bitset.to_ulong();
+        ++chunk_count;
         flag_stream.write(reinterpret_cast<const char *>(&chunk), sizeof(chunk));
     }
+    SimpleLogger().Write() << "Wrote " << number_of_bits << " bits in " << chunk_count
+                           << " chunks (Oneway Flags).";
 }
 
 /**

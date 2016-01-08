@@ -157,8 +157,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
 
     void SearchLoop(const NodeID node,
                     bool search_forward,
-                    const int total_distance_to_forward,
-                    const int total_distance_to_reverse,
+                    const int leg_distance_offset,  //the sum of forward/backward offset
                     std::int32_t &distance,
                     std::vector<NodeID> &packed_path) const
     {
@@ -168,6 +167,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         {
             const NodeID to = facade->GetTarget(edge);
             const EdgeData &data = facade->GetEdgeData(edge);
+            std::cout << "Edge: " << to << " " << data.distance << std::endl;
             if ((search_forward == data.forward or not search_forward == data.backward) and
                 to == node)
             {
@@ -180,9 +180,10 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         }
         if (best_weight != std::numeric_limits<std::int32_t>::max())
         {
-            distance = facade->GetEdgeData(best).distance + total_distance_to_forward +
-                       total_distance_to_reverse;
-            UnpackEdge(node, node, packed_path);
+            distance = facade->GetEdgeData(best).distance + leg_distance_offset;
+            //add node as source and target
+            packed_path.push_back(node);
+            packed_path.push_back(node);
         }
     }
 

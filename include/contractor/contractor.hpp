@@ -347,7 +347,7 @@ class Contractor
 
         unsigned current_level = 0;
         bool flushed_contractor = false;
-        while (number_of_nodes > 2 &&
+        while (number_of_nodes > 1 &&
                number_of_contracted_nodes < static_cast<NodeID>(number_of_nodes * core_factor))
         {
             if (!flushed_contractor && (number_of_contracted_nodes >
@@ -376,6 +376,19 @@ class Contractor
                     auto &node = remaining_nodes[new_node_id];
                     BOOST_ASSERT(node_priorities.size() > node.id);
                     new_node_priority[new_node_id] = node_priorities[node.id];
+                }
+
+                std::vector<bool> new_one_way_flags(number_of_nodes, false);
+                std::cout << "Nodes: " << number_of_nodes << " Flags: " << node_represents_one_way.size() << std::endl;
+                for (const auto new_node_id : osrm::irange<std::size_t>(0, remaining_nodes.size()))
+                {
+                    auto &node = remaining_nodes[new_node_id];
+                    if (node.id >= node_represents_one_way.size())
+                        std::cout << "NodeID to large: " << node.id << " of "
+                                  << node_represents_one_way.size() << std::endl;
+
+                    BOOST_ASSERT(node_represents_one_way.size() > node.id);
+                    new_one_way_flags[new_node_id] = node_represents_one_way[node.id];
                 }
 
                 // build forward and backward renumbering map and remap ids in remaining_nodes
@@ -426,6 +439,9 @@ class Contractor
                 // Delete old node_priorities vector
                 new_node_priority.clear();
                 new_node_priority.shrink_to_fit();
+                node_represents_one_way.swap(new_one_way_flags);
+                new_one_way_flags.clear();
+                new_one_way_flags.shrink_to_fit();
                 // old Graph is removed
                 contractor_graph.reset();
 
@@ -877,7 +893,7 @@ class Contractor
                 const NodeID target = contractor_graph->GetTarget(out_edge);
                 const int path_distance = in_data.distance + out_data.distance;
                 const int distance = heap.GetKey(target);
-                if ( source == target and node_represents_one_way[source])
+                if (source == target and node_represents_one_way[source])
                 {
                     if (RUNSIMULATION)
                     {
@@ -888,7 +904,8 @@ class Contractor
                     }
                     else
                     {
-                        //TODO currently, this process can compute parallel arcs, we only require the minimal one
+                        // TODO currently, this process can compute parallel arcs, we only require
+                        // the minimal one
                         inserted_edges.emplace_back(source, target,
                                                     in_data.distance + out_data.distance,
                                                     out_data.originalEdges + in_data.originalEdges,
