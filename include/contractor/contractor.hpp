@@ -379,14 +379,9 @@ class Contractor
                 }
 
                 std::vector<bool> new_one_way_flags(number_of_nodes, false);
-                std::cout << "Nodes: " << number_of_nodes << " Flags: " << node_represents_one_way.size() << std::endl;
-                for (const auto new_node_id : osrm::irange<std::size_t>(0, remaining_nodes.size()))
+                for (const auto new_node_id : util::irange<std::size_t>(0, remaining_nodes.size()))
                 {
                     auto &node = remaining_nodes[new_node_id];
-                    if (node.id >= node_represents_one_way.size())
-                        std::cout << "NodeID to large: " << node.id << " of "
-                                  << node_represents_one_way.size() << std::endl;
-
                     BOOST_ASSERT(node_represents_one_way.size() > node.id);
                     new_one_way_flags[new_node_id] = node_represents_one_way[node.id];
                 }

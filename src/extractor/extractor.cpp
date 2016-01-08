@@ -277,7 +277,7 @@ int Extractor::run()
 
         TIMER_STOP(expansion);
 
-        SimpleLogger().Write() << "Remembering One-Ways for " << node_based_edge_list.size()
+        util::SimpleLogger().Write() << "Remembering One-Ways for " << node_based_edge_list.size()
                                << " edge-based-nodes.";
         TIMER_START(one_ways);
 
@@ -592,7 +592,7 @@ void Extractor::WriteOneWayFlags(const std::vector<bool> &flags)
         ++chunk_count;
         flag_stream.write(reinterpret_cast<const char *>(&chunk), sizeof(chunk));
     }
-    SimpleLogger().Write() << "Wrote " << number_of_bits << " bits in " << chunk_count
+    util::SimpleLogger().Write() << "Wrote " << number_of_bits << " bits in " << chunk_count
                            << " chunks (Oneway Flags).";
 }
 
@@ -648,7 +648,7 @@ void Extractor::WriteEdgeBasedGraph(
     const util::FingerPrint fingerprint = util::FingerPrint::GetValid();
     file_out_stream.write((char *)&fingerprint, sizeof(util::FingerPrint));
 
-    SimpleLogger().Write() << "[extractor] Writing edge-based-graph egdes       ... " << std::flush;
+    util::SimpleLogger().Write() << "[extractor] Writing edge-based-graph egdes       ... " << std::flush;
     TIMER_START(write_edges);
 
     size_t number_of_used_edges = edge_based_edge_list.size();
@@ -661,7 +661,7 @@ void Extractor::WriteEdgeBasedGraph(
     }
 
     TIMER_STOP(write_edges);
-    SimpleLogger().Write() << "ok, after " << TIMER_SEC(write_edges) << "s" << std::endl;
+    util::SimpleLogger().Write() << "ok, after " << TIMER_SEC(write_edges) << "s" << std::endl;
 
     util::SimpleLogger().Write() << "Processed " << number_of_used_edges << " edges";
     file_out_stream.close();

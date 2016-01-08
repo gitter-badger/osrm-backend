@@ -90,7 +90,7 @@ int Prepare::Run()
         ReadNodeLevels(node_levels);
     }
     std::vector<bool> node_represents_oneway;
-    ReadOneWayFlags( node_represents_oneway );
+    ReadOneWayFlags(node_represents_oneway);
     util::DeallocatingVector<QueryEdge> contracted_edge_list;
     ContractGraph(max_edge_id, edge_based_edge_list, contracted_edge_list, is_core_node,
                   node_levels, std::move(node_represents_oneway));
@@ -148,7 +148,8 @@ std::size_t Prepare::LoadEdgeExpandedGraph(
     input_stream.read((char *)&fingerprint_loaded, sizeof(util::FingerPrint));
     fingerprint_loaded.TestPrepare(fingerprint_valid);
 
-    //TODO std::size_t can vary on systems. Our files are not transferable, but we might want to consider using a fixed size type for I/O
+    // TODO std::size_t can vary on systems. Our files are not transferable, but we might want to
+    // consider using a fixed size type for I/O
     std::size_t number_of_edges = 0;
     std::size_t max_edge_id = SPECIAL_EDGEID;
     input_stream.read((char *)&number_of_edges, sizeof(std::size_t));
@@ -274,23 +275,24 @@ void Prepare::WriteNodeLevels(std::vector<float> &&in_node_levels) const
 
 void Prepare::ReadOneWayFlags(std::vector<bool> &oneway_flags) const
 {
-    SimpleLogger().Write() << "Reading oneway flags from " << config.one_way_flags_path;
+    util::SimpleLogger().Write() << "Reading oneway flags from " << config.one_way_flags_path;
     std::uint32_t number_of_bits;
     boost::filesystem::ifstream flag_stream(config.one_way_flags_path, std::ios::binary);
     flag_stream.read(reinterpret_cast<char *>(&number_of_bits), sizeof(number_of_bits));
-    oneway_flags.resize( number_of_bits );
+    oneway_flags.resize(number_of_bits);
     // putting bits in ints
-    std::uint32_t chunks = (number_of_bits + 31)/32;
+    std::uint32_t chunks = (number_of_bits + 31) / 32;
     std::size_t bit_position = 0;
     std::uint32_t chunk;
-    for (std::size_t chunk_id = 0; chunk_id < chunks; ++chunk_id )
+    for (std::size_t chunk_id = 0; chunk_id < chunks; ++chunk_id)
     {
         flag_stream.read(reinterpret_cast<char *>(&chunk), sizeof(chunk));
         std::bitset<32> chunk_bits(chunk);
-        for( std::size_t bit = 0; bit < 32 && bit_position < number_of_bits; ++bit, ++bit_position )
-          oneway_flags[bit_position] = chunk_bits[bit];
+        for (std::size_t bit = 0; bit < 32 && bit_position < number_of_bits; ++bit, ++bit_position)
+            oneway_flags[bit_position] = chunk_bits[bit];
     }
-    SimpleLogger().Write() << "Read " << number_of_bits << " bits in " << chunks << " Chunks from disk.";
+    util::SimpleLogger().Write() << "Read " << number_of_bits << " bits in " << chunks
+                                 << " Chunks from disk.";
 }
 
 void Prepare::WriteCoreNodeMarker(std::vector<bool> &&in_is_core_node) const
@@ -396,9 +398,11 @@ Prepare::WriteContractedGraph(unsigned max_node_id,
     util::StaticGraph<EdgeData>::EdgeArrayEntry current_edge;
     for (const auto edge : util::irange<std::size_t>(0, contracted_edge_list.size()))
     {
-        // some self-loops are required for oneway handling. Need to assertthat we only keep these (TODO)
+        // some self-loops are required for oneway handling. Need to assertthat we only keep these
+        // (TODO)
         // no eigen loops
-        // BOOST_ASSERT(contracted_edge_list[edge].source != contracted_edge_list[edge].target || node_represents_oneway[contracted_edge_list[edge].source]);
+        // BOOST_ASSERT(contracted_edge_list[edge].source != contracted_edge_list[edge].target ||
+        // node_represents_oneway[contracted_edge_list[edge].source]);
         current_edge.target = contracted_edge_list[edge].target;
         current_edge.data = contracted_edge_list[edge].data;
 
@@ -430,32 +434,26 @@ Prepare::WriteContractedGraph(unsigned max_node_id,
 /**
  \brief Build contracted graph.
  */
-<<<<<<< HEAD
 void Prepare::ContractGraph(
     const unsigned max_edge_id,
     util::DeallocatingVector<extractor::EdgeBasedEdge> &edge_based_edge_list,
     util::DeallocatingVector<QueryEdge> &contracted_edge_list,
     std::vector<bool> &is_core_node,
-    std::vector<float> &inout_node_levels) const
-=======
-void Prepare::ContractGraph(const unsigned max_edge_id,
-                            DeallocatingVector<EdgeBasedEdge> &edge_based_edge_list,
-                            DeallocatingVector<QueryEdge> &contracted_edge_list,
-                            std::vector<bool> &is_core_node,
-                            std::vector<float> &inout_node_levels,
-                            std::vector<bool> &&node_represents_oneway) const
->>>>>>> contraction handles cyclic edges
+    std::vector<float> &inout_node_levels,
+    std::vector<bool> &&node_represents_oneway) const
 {
     std::vector<float> node_levels;
     node_levels.swap(inout_node_levels);
 
-    Contractor contractor(max_edge_id + 1, edge_based_edge_list, std::move(node_levels), std::move(node_represents_oneway));
+    Contractor contractor(max_edge_id + 1, edge_based_edge_list, std::move(node_levels),
+                          std::move(node_represents_oneway));
     contractor.Run(config.core_factor);
     contractor.GetEdges(contracted_edge_list);
     contractor.GetCoreMarker(is_core_node);
     contractor.GetNodeLevels(inout_node_levels);
 
-    std::cout << "Levels: " << inout_node_levels.size() << " Core: " << is_core_node.size() << " MEID: " << max_edge_id << std::endl;
+    std::cout << "Levels: " << inout_node_levels.size() << " Core: " << is_core_node.size()
+              << " MEID: " << max_edge_id << std::endl;
 }
 }
 }
