@@ -13,26 +13,26 @@
 
 const static std::string IO_TMP_FILE = "test_io.tmp";
 
-class ExtractorAccess : protected Extractor
+class ExtractorAccess : protected osrm::extractor::Extractor
 {
   public:
-    ExtractorAccess() : Extractor(ExtractorConfig())
+    ExtractorAccess() : Extractor(osrm::extractor::ExtractorConfig())
     {
-        super::config.oneway_flags_file_name = IO_TMP_FILE;
+        config.oneway_flags_file_name = IO_TMP_FILE;
     }
 
-    void WriteFlags(const std::vector<bool> &flags) { super::WriteOneWayFlags(flags); }
+    void WriteFlags(const std::vector<bool> &flags) { WriteOneWayFlags(flags); }
 };
 
-class PrepareAccess : protected Prepare
+class PrepareAccess : protected osrm::contractor::Prepare
 {
   public:
-    PrepareAccess() : Prepare(ContractorConfig())
+    PrepareAccess() : Prepare(osrm::contractor::ContractorConfig())
     {
-        super::config.one_way_flags_path = IO_TMP_FILE;
+        config.one_way_flags_path = IO_TMP_FILE;
     }
 
-    void ReadFlags(std::vector<bool> &flags) { super::ReadOneWayFlags(flags); }
+    void ReadFlags(std::vector<bool> &flags) { ReadOneWayFlags(flags); }
 };
 
 BOOST_AUTO_TEST_SUITE(osrm_io)
@@ -54,3 +54,5 @@ BOOST_AUTO_TEST_CASE(io_flags)
     BOOST_CHECK_EQUAL_COLLECTIONS(flags_out.begin(), flags_out.end(), flags_in.begin(),
                                   flags_in.end());
 }
+
+BOOST_AUTO_TEST_SUITE_END()

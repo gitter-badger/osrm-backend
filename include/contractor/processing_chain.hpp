@@ -59,8 +59,9 @@ class Prepare
                         const util::DeallocatingVector<extractor::EdgeBasedEdge> &edges,
                         std::vector<extractor::EdgeBasedNode> &nodes) const;
 
-  private:
     ContractorConfig config;
+  private:
+
     std::size_t
     LoadEdgeExpandedGraph(const std::string &edge_based_graph_path,
                           util::DeallocatingVector<extractor::EdgeBasedEdge> &edge_based_edge_list,

@@ -888,7 +888,7 @@ class Contractor
                 const NodeID target = contractor_graph->GetTarget(out_edge);
                 const int path_distance = in_data.distance + out_data.distance;
                 const int distance = heap.GetKey(target);
-                if (source == target and node_represents_one_way[source])
+                if (source == target && node_represents_one_way[source])
                 {
                     if (RUNSIMULATION)
                     {
