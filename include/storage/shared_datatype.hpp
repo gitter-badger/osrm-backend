@@ -10,7 +10,7 @@
 
 namespace osrm
 {
-namespace datastore
+namespace storage
 {
 
 namespace
