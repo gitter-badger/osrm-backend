@@ -112,7 +112,7 @@ class ShortestPathRouting final
 
         const constexpr bool SEARCH_DIRECTION_FORWARD = true;
         const constexpr bool SEARCH_DIRECTION_REVERSE = false;
-        const auto getOffsetSum = [&source_phantom, &target_phantom](bool search_direction)
+        const auto getOffsetSum = [&source_phantom, &target_phantom, SEARCH_DIRECTION_FORWARD](bool search_direction) -> int
         {
             return search_direction == SEARCH_DIRECTION_FORWARD
                        ? -source_phantom.GetForwardWeightPlusOffset() +
