@@ -1,5 +1,5 @@
-#include "contractor/processing_chain.hpp"
 #include "contractor/contractor.hpp"
+#include "contractor/graph_contractor.hpp"
 
 #include "extractor/edge_based_edge.hpp"
 
@@ -47,9 +47,7 @@ namespace osrm
 namespace contractor
 {
 
-Prepare::~Prepare() {}
-
-int Prepare::Run()
+int Contractor::Run()
 {
 #ifdef WIN32
 #pragma message("Memory consumption on Windows can be higher due to different bit packing")
@@ -112,7 +110,7 @@ int Prepare::Run()
     return 0;
 }
 
-std::size_t Prepare::LoadEdgeExpandedGraph(
+std::size_t Contractor::LoadEdgeExpandedGraph(
     std::string const &edge_based_graph_filename,
     util::DeallocatingVector<extractor::EdgeBasedEdge> &edge_based_edge_list,
     const std::string &edge_segment_lookup_filename,
@@ -141,7 +139,7 @@ std::size_t Prepare::LoadEdgeExpandedGraph(
     const util::FingerPrint fingerprint_valid = util::FingerPrint::GetValid();
     util::FingerPrint fingerprint_loaded;
     input_stream.read((char *)&fingerprint_loaded, sizeof(util::FingerPrint));
-    fingerprint_loaded.TestPrepare(fingerprint_valid);
+    fingerprint_loaded.TestContractor(fingerprint_valid);
 
     size_t number_of_edges = 0;
     size_t max_edge_id = SPECIAL_EDGEID;
@@ -246,7 +244,7 @@ std::size_t Prepare::LoadEdgeExpandedGraph(
     return max_edge_id;
 }
 
-void Prepare::ReadNodeLevels(std::vector<float> &node_levels) const
+void Contractor::ReadNodeLevels(std::vector<float> &node_levels) const
 {
     boost::filesystem::ifstream order_input_stream(config.level_output_path, std::ios::binary);
 
@@ -256,7 +254,7 @@ void Prepare::ReadNodeLevels(std::vector<float> &node_levels) const
     order_input_stream.read((char *)node_levels.data(), sizeof(float) * node_levels.size());
 }
 
-void Prepare::WriteNodeLevels(std::vector<float> &&in_node_levels) const
+void Contractor::WriteNodeLevels(std::vector<float> &&in_node_levels) const
 {
     std::vector<float> node_levels(std::move(in_node_levels));
 
@@ -267,7 +265,7 @@ void Prepare::WriteNodeLevels(std::vector<float> &&in_node_levels) const
     order_output_stream.write((char *)node_levels.data(), sizeof(float) * node_levels.size());
 }
 
-void Prepare::WriteCoreNodeMarker(std::vector<bool> &&in_is_core_node) const
+void Contractor::WriteCoreNodeMarker(std::vector<bool> &&in_is_core_node) const
 {
     std::vector<bool> is_core_node(std::move(in_is_core_node));
     std::vector<char> unpacked_bool_flags(std::move(is_core_node.size()));
@@ -285,7 +283,7 @@ void Prepare::WriteCoreNodeMarker(std::vector<bool> &&in_is_core_node) const
 }
 
 std::size_t
-Prepare::WriteContractedGraph(unsigned max_node_id,
+Contractor::WriteContractedGraph(unsigned max_node_id,
                               const util::DeallocatingVector<QueryEdge> &contracted_edge_list)
 {
     // Sorting contracted edges in a way that the static query graph can read some in in-place.
@@ -403,7 +401,7 @@ Prepare::WriteContractedGraph(unsigned max_node_id,
 /**
  \brief Build contracted graph.
  */
-void Prepare::ContractGraph(
+void Contractor::ContractGraph(
     const unsigned max_edge_id,
     util::DeallocatingVector<extractor::EdgeBasedEdge> &edge_based_edge_list,
     util::DeallocatingVector<QueryEdge> &contracted_edge_list,
@@ -413,11 +411,11 @@ void Prepare::ContractGraph(
     std::vector<float> node_levels;
     node_levels.swap(inout_node_levels);
 
-    Contractor contractor(max_edge_id + 1, edge_based_edge_list, std::move(node_levels));
-    contractor.Run(config.core_factor);
-    contractor.GetEdges(contracted_edge_list);
-    contractor.GetCoreMarker(is_core_node);
-    contractor.GetNodeLevels(inout_node_levels);
+    GraphContractor graph_contractor(max_edge_id + 1, edge_based_edge_list, std::move(node_levels));
+    graph_contractor.Run(config.core_factor);
+    graph_contractor.GetEdges(contracted_edge_list);
+    graph_contractor.GetCoreMarker(is_core_node);
+    graph_contractor.GetNodeLevels(inout_node_levels);
 }
 }
 }
