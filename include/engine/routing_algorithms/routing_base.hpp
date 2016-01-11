@@ -168,7 +168,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         {
             const NodeID to = facade->GetTarget(edge);
             const EdgeData &data = facade->GetEdgeData(edge);
-            if ((search_forward == data.forward or not search_forward == data.backward) and
+            if ((search_forward == data.forward || search_forward != data.backward) &&
                 to == node)
             {
                 if (best_weight > data.distance)
