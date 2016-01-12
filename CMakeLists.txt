@@ -238,8 +238,6 @@ set(OSMIUM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libosmium/includ
 find_package(Osmium REQUIRED COMPONENTS io)
 include_directories(SYSTEM ${OSMIUM_INCLUDE_DIRS})
 
-target_link_libraries(osrm-extract ${OSMIUM_LIBRARIES})
-target_link_libraries(extractor-tests ${OSMIUM_LIBRARIES})
 
 find_package(Boost 1.49.0 COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
 if(NOT Boost_FOUND)
@@ -247,84 +245,29 @@ if(NOT Boost_FOUND)
 endif()
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
-# Libaries
-target_link_libraries(osrm ${Boost_LIBRARIES})
-target_link_libraries(osrm_extract ${Boost_LIBRARIES})
-target_link_libraries(osrm_contract ${Boost_LIBRARIES})
-target_link_libraries(osrm_store ${Boost_LIBRARIES})
-# Binaries
-target_link_libraries(osrm-extract ${Boost_LIBRARIES})
-target_link_libraries(osrm-prepare ${Boost_LIBRARIES})
-target_link_libraries(osrm-routed ${Boost_LIBRARIES} ${OPTIONAL_SOCKET_LIBS})
-target_link_libraries(osrm-datastore ${Boost_LIBRARIES})
-# Tests
-target_link_libraries(engine-tests ${Boost_LIBRARIES})
-target_link_libraries(extractor-tests ${Boost_LIBRARIES})
-target_link_libraries(util-tests ${Boost_LIBRARIES})
-target_link_libraries(rtree-bench ${Boost_LIBRARIES})
-
 find_package(Threads REQUIRED)
-# Libraries
-target_link_libraries(osrm ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(osrm_extract ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(osrm_contract ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(osrm_store ${CMAKE_THREAD_LIBS_INIT})
-# Tests
-target_link_libraries(engine-tests ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(extractor-tests ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(util-tests ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(rtree-bench ${CMAKE_THREAD_LIBS_INIT})
 
 find_package(TBB REQUIRED)
 include_directories(SYSTEM ${TBB_INCLUDE_DIR})
 if(WIN32 AND CMAKE_BUILD_TYPE MATCHES Debug)
   set(TBB_LIBRARIES ${TBB_DEBUG_LIBRARIES})
 endif()
-# Libraries
-target_link_libraries(osrm_extract ${TBB_LIBRARIES})
-target_link_libraries(osrm_contract ${TBB_LIBRARIES})
-target_link_libraries(osrm_store ${TBB_LIBRARIES})
-# Tests
-target_link_libraries(engine-tests ${TBB_LIBRARIES})
-target_link_libraries(extractor-tests ${TBB_LIBRARIES})
-target_link_libraries(util-tests ${TBB_LIBRARIES})
-target_link_libraries(rtree-bench ${TBB_LIBRARIES})
 
 find_package( Luabind REQUIRED )
 include(check_luabind)
 include_directories(SYSTEM ${LUABIND_INCLUDE_DIR})
 
-# Libraries
-target_link_libraries(osrm_extract ${LUABIND_LIBRARY})
-target_link_libraries(osrm_contract ${LUABIND_LIBRARY})
-# Tests
-target_link_libraries(extractor-tests ${LUABIND_LIBRARY})
-
+set(USED_LUA_LIBRAIES ${LUA_LIBRARY})
 if(LUAJIT_FOUND)
-  target_link_libraries(osrm-extract ${LUAJIT_LIBRARIES})
-  target_link_libraries(osrm-prepare ${LUAJIT_LIBRARIES})
-  target_link_libraries(extractor-tests ${LUAJIT_LIBRARY})
-else()
-  target_link_libraries(osrm-extract ${LUA_LIBRARY})
-  target_link_libraries(osrm-prepare ${LUA_LIBRARY})
-  target_link_libraries(extractor-tests ${LUA_LIBRARY})
+  set(USED_LUA_LIBRAIES, LUAJIT_LIBRARIES)
 endif()
 include_directories(SYSTEM ${LUA_INCLUDE_DIR})
 
 find_package(EXPAT REQUIRED)
 include_directories(SYSTEM ${EXPAT_INCLUDE_DIRS})
-target_link_libraries(osrm_extract ${EXPAT_LIBRARIES})
-target_link_libraries(extractor-tests ${EXPAT_LIBRARY})
 
 find_package(STXXL REQUIRED)
 include_directories(SYSTEM ${STXXL_INCLUDE_DIR})
-# Libraries
-target_link_libraries(osrm ${STXXL_LIBRARY})
-target_link_libraries(osrm_extract ${STXXL_LIBRARY})
-target_link_libraries(osrm_contract ${STXXL_LIBRARY})
-# Tests
-target_link_libraries(extractor-tests ${STXXL_LIBRARY})
-target_link_libraries(util-tests ${STXXL_LIBRARY})
 
 set(OpenMP_FIND_QUIETLY ON)
 find_package(OpenMP)
@@ -335,17 +278,9 @@ endif()
 
 find_package(BZip2 REQUIRED)
 include_directories(SYSTEM ${BZIP_INCLUDE_DIRS})
-target_link_libraries(osrm_extract ${BZIP2_LIBRARIES})
-target_link_libraries(extractor-tests ${BZIP2_LIBRARIES})
 
 find_package(ZLIB REQUIRED)
 include_directories(SYSTEM ${ZLIB_INCLUDE_DIRS})
-# Libraries
-target_link_libraries(osrm_extract ${ZLIB_LIBRARY})
-# Binaries
-target_link_libraries(osrm-routed ${ZLIB_LIBRARY})
-# Tests
-target_link_libraries(extractor-tests ${ZLIB_LIBRARY})
 
 if (ENABLE_JSON_LOGGING)
   message(STATUS "Enabling json logging")
@@ -356,6 +291,55 @@ if (DEBUG_GEOMETRY)
   message(STATUS "Enabling final edge weight GeoJSON output option")
   add_definitions(-DDEBUG_GEOMETRY)
 endif()
+
+
+# Binaries
+target_link_libraries(osrm-datastore osrm_store ${Boost_LIBRARIES})
+target_link_libraries(osrm-extract osrm_extract ${Boost_LIBRARIES})
+target_link_libraries(osrm-prepare osrm_contract ${Boost_LIBRARIES})
+target_link_libraries(osrm-routed osrm ${Boost_LIBRARIES} ${OPTIONAL_SOCKET_LIBS} ${ZLIB_LIBRARY})
+
+set(EXTRACTOR_LIBRARIES
+    ${BZIP2_LIBRARIES}
+    ${Boost_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${EXPAT_LIBRARIES}
+    ${LUABIND_LIBRARY}
+    ${USED_LUA_LIBRAIES}
+    ${OSMIUM_LIBRARIES}
+    ${STXXL_LIBRARY}
+    ${TBB_LIBRARIES}
+    ${ZLIB_LIBRARY})
+set(CONTRACTOR_LIBRARIES
+    ${Boost_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${LUABIND_LIBRARY}
+    ${USED_LUA_LIBRAIES}
+    ${STXXL_LIBRARY}
+    ${TBB_LIBRARIES})
+set(ENGINE_LIBRARIES
+    ${Boost_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${STXXL_LIBRARY})
+set(STORAGE_LIBRARIES
+    ${Boost_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${TBB_LIBRARIES})
+set(UTIL_LIBRARIES
+    ${Boost_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${STXXL_LIBRARY}
+    ${TBB_LIBRARIES})
+# Libraries
+target_link_libraries(osrm ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${STXXL_LIBRARY})
+target_link_libraries(osrm_contract ${CONTRACTOR_LIBRARIES})
+target_link_libraries(osrm_extract ${EXTRACTOR_LIBRARIES})
+target_link_libraries(osrm_store ${STORAGE_LIBRARIES})
+# Tests
+target_link_libraries(engine-tests ${ENGINE_LIBRARIES})
+target_link_libraries(extractor-tests ${EXTRACTOR_LIBRARIES})
+target_link_libraries(rtree-bench ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${TBB_LIBRARIES})
+target_link_libraries(util-tests ${UTIL_LIBRARIES})
 
 if(BUILD_TOOLS)
   message(STATUS "Activating OSRM internal tools")
