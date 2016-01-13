@@ -103,11 +103,11 @@ class DirectShortestPathRouting final
             reverse_core_heap.Clear();
 
             super::SearchWithCore(forward_heap, reverse_heap, forward_core_heap, reverse_core_heap,
-                                  distance, packed_leg);
+                                  distance, packed_leg, false, false);
         }
         else
         {
-            super::Search(forward_heap, reverse_heap, distance, packed_leg);
+            super::Search(forward_heap, reverse_heap, distance, packed_leg, false, false);
         }
 
         // No path found for both target nodes?
