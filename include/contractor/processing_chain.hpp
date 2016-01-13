@@ -46,15 +46,13 @@ class Prepare
                        util::DeallocatingVector<extractor::EdgeBasedEdge> &edge_based_edge_list,
                        util::DeallocatingVector<QueryEdge> &contracted_edge_list,
                        std::vector<bool> &is_core_node,
-                       std::vector<float> &node_levels,
-                       std::vector<bool> &&oneway_flags) const;
+                       std::vector<float> &node_levels ) const;
     void WriteCoreNodeMarker(std::vector<bool> &&is_core_node) const;
     void WriteNodeLevels(std::vector<float> &&node_levels) const;
     void ReadNodeLevels(std::vector<float> &contraction_order) const;
     std::size_t
     WriteContractedGraph(unsigned number_of_edge_based_nodes,
                          const util::DeallocatingVector<QueryEdge> &contracted_edge_list);
-    void ReadOneWayFlags(std::vector<bool> &oneway_flags) const;
     void FindComponents(unsigned max_edge_id,
                         const util::DeallocatingVector<extractor::EdgeBasedEdge> &edges,
                         std::vector<extractor::EdgeBasedNode> &nodes) const;

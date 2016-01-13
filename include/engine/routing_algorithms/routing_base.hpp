@@ -78,6 +78,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
     {
         const NodeID node = forward_heap.DeleteMin();
         const int distance = forward_heap.GetKey(node);
+        std::cout << "[" << forward_direction << "] " << node << " for " << distance << std::endl;
 
         if (reverse_heap.WasInserted(node))
         {
@@ -86,8 +87,35 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
             {
                 if (new_distance >= 0)
                 {
+                    std::cout << "[Candidate] " << node << " Dist: " << new_distance << std::endl;
                     middle_node_id = node;
                     upper_bound = new_distance;
+                }
+                else
+                {
+                    // check whether there is a loop present at the node
+                    for (const auto edge : facade->GetAdjacentEdgeRange(node))
+                    {
+                        const EdgeData &data = facade->GetEdgeData(edge);
+                        bool forward_directionFlag =
+                            (forward_direction ? data.forward : data.backward);
+                        if (forward_directionFlag)
+                        {
+                            const NodeID to = facade->GetTarget(edge);
+                            if (to == node)
+                            {
+                                const int edge_weight = data.distance;
+                                const int loop_distance = new_distance + edge_weight;
+                                if (loop_distance >= 0)
+                                {
+                                    std::cout << "[Loop Candidate] " << node
+                                              << "Dist: " << loop_distance << std::endl;
+                                    middle_node_id = node;
+                                    upper_bound = loop_distance;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -155,36 +183,85 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         }
     }
 
-    void SearchLoop(const NodeID node,
-                    bool search_forward,
-                    const int leg_distance_offset,  //the sum of forward/backward offset
-                    std::int32_t &distance,
-                    std::vector<NodeID> &packed_path) const
+    // Finds the weight of the best self-loop if present
+    int FindSelfLoopDistance(const NodeID node, bool search_forward) const
     {
         std::int32_t best_weight = std::numeric_limits<std::int32_t>::max();
-        distance = INVALID_EDGE_WEIGHT;
-        EdgeID best;
         for (const auto edge : facade->GetAdjacentEdgeRange(node))
         {
             const NodeID to = facade->GetTarget(edge);
             const EdgeData &data = facade->GetEdgeData(edge);
-            if ((search_forward == data.forward || search_forward != data.backward) &&
-                to == node)
+            if ((search_forward == data.forward || search_forward != data.backward) && to == node)
             {
                 if (best_weight > data.distance)
                 {
-                    best = edge;
                     best_weight = data.distance;
                 }
             }
         }
-        if (best_weight != std::numeric_limits<std::int32_t>::max())
+        return best_weight;
+    }
+
+    enum class SameSegmentRouteType
+    {
+        INVALID,
+        DIRECT_FORWARD,
+        DIRECT_REVERSE,
+        SELF_LOOP_FORWARD,
+        SELF_LOOP_REVERSE
+    };
+
+    // Handle Initial upper bounds in case source/target are on the same OSM-Way
+    std::pair<int, SameSegmentRouteType> GetInitialUpperBound(const PhantomNode source_phantom,
+                                                              const PhantomNode target_phantom)
+    {
+        int upper_bound = INT_MAX;
+        SameSegmentRouteType type = SameSegmentRouteType::INVALID;
+
+        if (source_phantom.forward_node_id == target_phantom.forward_node_id &&
+            source_phantom.reverse_node_id == target_phantom.reverse_node_id)
         {
-            distance = facade->GetEdgeData(best).distance + leg_distance_offset;
-            //add node as source and target
-            packed_path.push_back(node);
-            packed_path.push_back(node);
+            if (SPECIAL_NODEID != source_phantom.forward_node_id)
+            {
+                if (source_phantom.GetForwardWeightPlusOffset() <=
+                    target_phantom.GetForwardWeightPlusOffset())
+                {
+                    // Check a direct connection
+                    upper_bound = target_phantom.GetForwardWeightPlusOffset() -
+                                  source_phantom.GetForwardWeightPlusOffset();
+                    type = SameSegmentRouteType::DIRECT_FORWARD;
+                }
+                else
+                {
+                    upper_bound = FindSelfLoopDistance(source_phantom.forward_node_id, true);
+                    if (upper_bound != INT_MAX)
+                        type = SameSegmentRouteType::SELF_LOOP_FORWARD;
+                }
+            }
+            if (SPECIAL_NODEID != source_phantom.reverse_node_id)
+            {
+                int weight = target_phantom.GetReverseWeightPlusOffset() -
+                             source_phantom.GetReverseWeightPlusOffset();
+                if (weight >= 0)
+                {
+                    if (weight < upper_bound)
+                    {
+                        upper_bound = weight;
+                        type = SameSegmentRouteType::DIRECT_REVERSE;
+                    }
+                }
+                else
+                {
+                    weight = FindSelfLoopDistance(source_phantom.reverse_node_id, true);
+                    if (weight < upper_bound)
+                    {
+                        upper_bound = weight;
+                        type = SameSegmentRouteType::DIRECT_REVERSE;
+                    }
+                }
+            }
         }
+        return std::make_pair(upper_bound, type);
     }
 
     template <typename RandomIter>
@@ -216,6 +293,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
             //            edge_id
             edge = recursion_stack.top();
             recursion_stack.pop();
+            std::cout << "At: " << edge.first << " " << edge.second << std::endl;
 
             // facade->FindEdge does not suffice here in case of shortcuts.
             // The above explanation unclear? Think!
@@ -248,6 +326,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                     }
                 }
             }
+            std::cout << "Edge: " << smaller_edge_id << " -- " << edge_weight << std::endl;
             BOOST_ASSERT_MSG(edge_weight != INVALID_EDGE_WEIGHT, "edge id invalid");
 
             const EdgeData &ed = facade->GetEdgeData(smaller_edge_id);
@@ -472,6 +551,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
             }
         }
 
+        std::cout << "Distance: " << distance << " Middle: " << middle << std::endl;
         // No path found for both target nodes?
         if (INVALID_EDGE_WEIGHT == distance || SPECIAL_NODEID == middle)
         {
@@ -482,7 +562,20 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         BOOST_ASSERT_MSG((SPECIAL_NODEID != middle && INVALID_EDGE_WEIGHT != distance),
                          "no path found");
 
-        RetrievePackedPathFromHeap(forward_heap, reverse_heap, middle, packed_leg);
+        // make sure to correctly unpack loops
+        if (distance != forward_heap.GetKey(middle) + reverse_heap.GetKey(middle))
+        {
+            // self loop
+            BOOST_ASSERT(forward_heap.GetKey(middle) + reverse_heap.GetKey(middle) < 0);
+            BOOST_ASSERT(forward_heap.GetData(middle).parent == middle &&
+                         reverse_heap.GetData(middle).parent == middle);
+            packed_leg.push_back(middle);
+            packed_leg.push_back(middle);
+        }
+        else
+        {
+            RetrievePackedPathFromHeap(forward_heap, reverse_heap, middle, packed_leg);
+        }
     }
 
     // assumes that heaps are already setup correctly.
@@ -679,6 +772,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         {
             std::vector<NodeID> packed_leg;
             RetrievePackedPathFromHeap(forward_heap, reverse_heap, middle_node, packed_leg);
+
             std::vector<PathData> unpacked_path;
             PhantomNodes nodes;
             nodes.source_phantom = source_phantom;

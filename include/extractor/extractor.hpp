@@ -26,7 +26,6 @@ class Extractor
                            std::vector<EdgeBasedNode> &node_based_edge_list,
                            std::vector<bool> &node_is_startpoint,
                            util::DeallocatingVector<EdgeBasedEdge> &edge_based_edge_list);
-	void WriteOneWayFlags(const std::vector<bool> &flags);
     void WriteNodeMapping(const std::vector<QueryNode> &internal_to_external_node_map);
     void FindComponents(unsigned max_edge_id,
                         const util::DeallocatingVector<EdgeBasedEdge> &edges,

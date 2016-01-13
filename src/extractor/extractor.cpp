@@ -280,22 +280,6 @@ int Extractor::run()
 
         util::SimpleLogger().Write() << "Remembering One-Ways for " << node_based_edge_list.size()
                                << " edge-based-nodes.";
-        TIMER_START(one_ways);
-
-        node_represents_oneway_street.resize(max_edge_id+1, false);
-        const auto isOneWay = [](EdgeBasedNode const &node)
-        {
-            return (SPECIAL_NODEID == node.forward_edge_based_node_id) ^
-                   (SPECIAL_NODEID == node.reverse_edge_based_node_id);
-        };
-        for( const auto node : node_based_edge_list ){
-          if( isOneWay(node) ){
-            BOOST_ASSERT(SPECIAL_NODEID != node.forward_edge_based_node_id);
-            node_represents_oneway_street[node.forward_edge_based_node_id] = true;
-          }
-        }
-        WriteOneWayFlags(node_represents_oneway_street);
-        TIMER_STOP(one_ways);
 
         util::SimpleLogger().Write() << "building r-tree ...";
         TIMER_START(rtree);
@@ -568,14 +552,6 @@ void Extractor::WriteNodeMapping(const std::vector<QueryNode> &internal_to_exter
                           size_of_mapping * sizeof(QueryNode));
     }
     node_stream.close();
-}
-
-/**
-  \brief Writing flags indicating one-way nodes.
-  */
-void Extractor::WriteOneWayFlags(const std::vector<bool> &flags)
-{
-    util::serializeFlags( config.oneway_flags_file_name, flags );
 }
 
 /**

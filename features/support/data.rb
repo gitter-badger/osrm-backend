@@ -263,7 +263,7 @@ def extract_data
       raise ExtractError.new $?.exitstatus, "osrm-extract exited with code #{$?.exitstatus}."
     end
     begin
-        ["osrm","osrm.names","osrm.restrictions","osrm.ebg","osrm.edges","osrm.fileIndex","osrm.geometry","osrm.nodes","osrm.ramIndex","osrm.osi"].each do |file|
+        ["osrm","osrm.names","osrm.restrictions","osrm.ebg","osrm.edges","osrm.fileIndex","osrm.geometry","osrm.nodes","osrm.ramIndex"].each do |file|
         log "Renaming #{osm_file}.#{file} to #{extracted_file}.#{file}", :preprocess
         File.rename "#{osm_file}.#{file}", "#{extracted_file}.#{file}"
       end
@@ -282,7 +282,7 @@ def prepare_data
       raise PrepareError.new $?.exitstatus, "osrm-prepare exited with code #{$?.exitstatus}."
     end
     begin
-      ["osrm.hsgr","osrm.fileIndex","osrm.geometry","osrm.nodes","osrm.ramIndex","osrm.core","osrm.edges","osrm.osi"].each do |file|
+      ["osrm.hsgr","osrm.fileIndex","osrm.geometry","osrm.nodes","osrm.ramIndex","osrm.core","osrm.edges"].each do |file|
         log "Renaming #{extracted_file}.#{file} to #{prepared_file}.#{file}", :preprocess
         File.rename "#{extracted_file}.#{file}", "#{prepared_file}.#{file}"
       end

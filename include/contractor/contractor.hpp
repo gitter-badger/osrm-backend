@@ -147,10 +147,8 @@ class Contractor
     template <class ContainerT>
     Contractor(int nodes,
                ContainerT &input_edge_list,
-               std::vector<float> &&node_levels_,
-               std::vector<bool> &&node_represents_one_way_)
-        : node_levels(std::move(node_levels_)),
-          node_represents_one_way(std::move(node_represents_one_way_))
+               std::vector<float> &&node_levels_ )
+        : node_levels(std::move(node_levels_))
     {
         std::vector<ContractorEdge> edges;
         edges.reserve(input_edge_list.size() * 2);
@@ -378,14 +376,6 @@ class Contractor
                     new_node_priority[new_node_id] = node_priorities[node.id];
                 }
 
-                std::vector<bool> new_one_way_flags(number_of_nodes, false);
-                for (const auto new_node_id : util::irange<std::size_t>(0, remaining_nodes.size()))
-                {
-                    auto &node = remaining_nodes[new_node_id];
-                    BOOST_ASSERT(node_represents_one_way.size() > node.id);
-                    new_one_way_flags[new_node_id] = node_represents_one_way[node.id];
-                }
-
                 // build forward and backward renumbering map and remap ids in remaining_nodes
                 for (const auto new_node_id : util::irange<std::size_t>(0, remaining_nodes.size()))
                 {
@@ -434,9 +424,6 @@ class Contractor
                 // Delete old node_priorities vector
                 new_node_priority.clear();
                 new_node_priority.shrink_to_fit();
-                node_represents_one_way.swap(new_one_way_flags);
-                new_one_way_flags.clear();
-                new_one_way_flags.shrink_to_fit();
                 // old Graph is removed
                 contractor_graph.reset();
 
@@ -733,6 +720,48 @@ class Contractor
     }
 
   private:
+    inline void
+    RelaxNode(const NodeID node, const NodeID forbidden_node, const int distance, ContractorHeap &heap)
+    {
+        const short current_hop = heap.GetData(node).hop + 1;
+        for (auto edge : contractor_graph->GetAdjacentEdgeRange(node))
+        {
+            const ContractorEdgeData &data = contractor_graph->GetEdgeData(edge);
+            if (!data.forward)
+            {
+                continue;
+            }
+            const NodeID to = contractor_graph->GetTarget(edge);
+            if (forbidden_node == to)
+            {
+                continue;
+            }
+            const int to_distance = distance + data.distance;
+
+            // New Node discovered -> Add to Heap + Node Info Storage
+            if (!heap.WasInserted(to))
+            {
+                heap.Insert(to, to_distance, ContractorHeapData(current_hop, false));
+            }
+            // Found a shorter Path -> Update distance
+            else if (to_distance < heap.GetKey(to))
+            {
+                heap.DecreaseKey(to, to_distance);
+                heap.GetData(to).hop = current_hop;
+            }
+        }
+    }
+
+    inline int FindSelfLoop(const NodeID node, int max_distance, ContractorThreadData *const data)
+    {
+        ContractorHeap &heap = data->heap;
+        heap.Clear();
+        heap.Insert(node, INT_MAX, ContractorHeapData(0, true)); // mark the node itself as a target
+        RelaxNode(node, SPECIAL_NODEID, 0, heap);                   // add its neighbors to the heap
+        Dijkstra(max_distance, 1, 1000, data, SPECIAL_NODEID);
+        return heap.GetKey(node);
+    }
+
     inline void Dijkstra(const int max_distance,
                          const unsigned number_of_targets,
                          const int maxNodes,
@@ -748,8 +777,6 @@ class Contractor
         {
             const NodeID node = heap.DeleteMin();
             const int distance = heap.GetKey(node);
-            const short current_hop = heap.GetData(node).hop + 1;
-
             if (++nodes > maxNodes)
             {
                 return;
@@ -769,33 +796,7 @@ class Contractor
                 }
             }
 
-            // iterate over all edges of node
-            for (auto edge : contractor_graph->GetAdjacentEdgeRange(node))
-            {
-                const ContractorEdgeData &data = contractor_graph->GetEdgeData(edge);
-                if (!data.forward)
-                {
-                    continue;
-                }
-                const NodeID to = contractor_graph->GetTarget(edge);
-                if (middleNode == to)
-                {
-                    continue;
-                }
-                const int to_distance = distance + data.distance;
-
-                // New Node discovered -> Add to Heap + Node Info Storage
-                if (!heap.WasInserted(to))
-                {
-                    heap.Insert(to, to_distance, ContractorHeapData(current_hop, false));
-                }
-                // Found a shorter Path -> Update distance
-                else if (to_distance < heap.GetKey(to))
-                {
-                    heap.DecreaseKey(to, to_distance);
-                    heap.GetData(to).hop = current_hop;
-                }
-            }
+            RelaxNode(node, middleNode, distance, heap);
         }
     }
 
@@ -837,8 +838,8 @@ class Contractor
         {
             const ContractorEdgeData &in_data = contractor_graph->GetEdgeData(in_edge);
             const NodeID source = contractor_graph->GetTarget(in_edge);
-            if( source == node )
-              continue;
+            if (source == node)
+                continue;
 
             if (RUNSIMULATION)
             {
@@ -851,6 +852,48 @@ class Contractor
                 continue;
             }
 
+            //Check for Potential Self-Loops, only add if self-loop is the shortest loop
+            for (auto out_edge : contractor_graph->GetAdjacentEdgeRange(node))
+            {
+                const ContractorEdgeData &out_data = contractor_graph->GetEdgeData(out_edge);
+                if (out_data.forward)
+                {
+                    const NodeID target = contractor_graph->GetTarget(out_edge);
+                    if (source == target)
+                    {
+                        // TODO we could prune some of these self-loops if we new about the weight along the
+                        // edge represented by `node` itself. If the self-loop is longer than the edge,
+                        // the self loop can be pruned as well
+                        // Check for Self Loops
+                        const int this_loop_distance = in_data.distance + out_data.distance;
+                        int self_loop_distance = FindSelfLoop(source, this_loop_distance, data);
+                        if (self_loop_distance == this_loop_distance)
+                        {
+                            if (RUNSIMULATION)
+                            {
+                                BOOST_ASSERT(stats != nullptr);
+                                stats->edges_added_count += 2;
+                                stats->original_edges_added_count +=
+                                    2 * (out_data.originalEdges + in_data.originalEdges);
+                            }
+                            else
+                            {
+                                inserted_edges.emplace_back(source, target, this_loop_distance,
+                                                            out_data.originalEdges +
+                                                                in_data.originalEdges,
+                                                            node, true, true, false);
+
+                                inserted_edges.emplace_back(target, source, this_loop_distance,
+                                                            out_data.originalEdges +
+                                                                in_data.originalEdges,
+                                                            node, true, false, true);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+
             heap.Clear();
             heap.Insert(source, 0, ContractorHeapData());
             int max_distance = 0;
@@ -859,13 +902,13 @@ class Contractor
             for (auto out_edge : contractor_graph->GetAdjacentEdgeRange(node))
             {
                 const ContractorEdgeData &out_data = contractor_graph->GetEdgeData(out_edge);
-                if (!out_data.forward )
+                if (!out_data.forward)
                 {
                     continue;
                 }
                 const NodeID target = contractor_graph->GetTarget(out_edge);
-                if( target == node )
-                  continue;
+                if (target == node)
+                    continue;
                 const int path_distance = in_data.distance + out_data.distance;
                 max_distance = std::max(max_distance, path_distance);
                 if (!heap.WasInserted(target))
@@ -891,34 +934,11 @@ class Contractor
                     continue;
                 }
                 const NodeID target = contractor_graph->GetTarget(out_edge);
-                if( target == node )
-                  continue;
+                if (target == node)
+                    continue;
                 const int path_distance = in_data.distance + out_data.distance;
                 const int distance = heap.GetKey(target);
-                if (source == target && node_represents_one_way[source])
-                {
-                    if (RUNSIMULATION)
-                    {
-                        BOOST_ASSERT(stats != nullptr);
-                        stats->edges_added_count += 2;
-                        stats->original_edges_added_count +=
-                            2 * (out_data.originalEdges + in_data.originalEdges);
-                    }
-                    else
-                    {
-                        // TODO currently, this process can compute parallel arcs, we only require
-                        // the minimal one
-                        inserted_edges.emplace_back(source, target,
-                                                    in_data.distance + out_data.distance,
-                                                    out_data.originalEdges + in_data.originalEdges,
-                                                    node, true, true, false);
-                        inserted_edges.emplace_back(source, target,
-                                                    in_data.distance + out_data.distance,
-                                                    out_data.originalEdges + in_data.originalEdges,
-                                                    node, true, false, true);
-                    }
-                }
-                else if (path_distance < distance)
+                if (path_distance < distance)
                 {
                     if (RUNSIMULATION)
                     {
@@ -1120,7 +1140,6 @@ class Contractor
     std::vector<float> node_levels;
     std::vector<bool> is_core_node;
     util::XORFastHash fast_hash;
-    std::vector<bool> node_represents_one_way;
 };
 }
 }

@@ -90,11 +90,9 @@ int Prepare::Run()
     {
         ReadNodeLevels(node_levels);
     }
-    std::vector<bool> node_represents_oneway;
-    ReadOneWayFlags(node_represents_oneway);
     util::DeallocatingVector<QueryEdge> contracted_edge_list;
     ContractGraph(max_edge_id, edge_based_edge_list, contracted_edge_list, is_core_node,
-                  node_levels, std::move(node_represents_oneway));
+                  node_levels);
     TIMER_STOP(contraction);
 
     util::SimpleLogger().Write() << "Contraction took " << TIMER_SEC(contraction) << " sec";
@@ -274,11 +272,6 @@ void Prepare::WriteNodeLevels(std::vector<float> &&in_node_levels) const
     order_output_stream.write((char *)node_levels.data(), sizeof(float) * node_levels.size());
 }
 
-void Prepare::ReadOneWayFlags(std::vector<bool> &oneway_flags) const
-{
-    util::deserializeFlags( config.one_way_flags_path, oneway_flags );
-}
-
 void Prepare::WriteCoreNodeMarker(std::vector<bool> &&in_is_core_node) const
 {
     std::vector<bool> is_core_node(std::move(in_is_core_node));
@@ -423,14 +416,12 @@ void Prepare::ContractGraph(
     util::DeallocatingVector<extractor::EdgeBasedEdge> &edge_based_edge_list,
     util::DeallocatingVector<QueryEdge> &contracted_edge_list,
     std::vector<bool> &is_core_node,
-    std::vector<float> &inout_node_levels,
-    std::vector<bool> &&node_represents_oneway) const
+    std::vector<float> &inout_node_levels) const
 {
     std::vector<float> node_levels;
     node_levels.swap(inout_node_levels);
 
-    Contractor contractor(max_edge_id + 1, edge_based_edge_list, std::move(node_levels),
-                          std::move(node_represents_oneway));
+    Contractor contractor(max_edge_id + 1, edge_based_edge_list, std::move(node_levels));
     contractor.Run(config.core_factor);
     contractor.GetEdges(contracted_edge_list);
     contractor.GetCoreMarker(is_core_node);
