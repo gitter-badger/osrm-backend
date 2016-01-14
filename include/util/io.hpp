@@ -8,7 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include <iostream>
+#include <fstream>
 #include <bitset>
 #include <vector>
 
