@@ -39,7 +39,7 @@ inline bool serializeFlags(const boost::filesystem::path &path, const std::vecto
     }
     util::SimpleLogger().Write() << "Wrote " << number_of_bits << " bits in " << chunk_count
                                  << " chunks (Flags).";
-    return !flag_stream.fail();
+    return flag_stream;
 }
 
 inline bool deserializeFlags(const boost::filesystem::path &path, std::vector<bool> &flags)
@@ -62,7 +62,7 @@ inline bool deserializeFlags(const boost::filesystem::path &path, std::vector<bo
     }
     util::SimpleLogger().Write() << "Read " << number_of_bits << " bits in " << chunks
                                  << " Chunks from disk.";
-    return !flag_stream.fail();
+    return flag_stream;
 }
 } // namespace util
 } // namespace osrm

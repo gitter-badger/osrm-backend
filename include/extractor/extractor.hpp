@@ -17,7 +17,7 @@ class Extractor
     Extractor(ExtractorConfig extractor_config) : config(std::move(extractor_config)) {}
     int run();
 
-  protected:
+  private:
     ExtractorConfig config;
 
     void SetupScriptingEnvironment(lua_State *myLuaState, SpeedProfileProperties &speed_profile);

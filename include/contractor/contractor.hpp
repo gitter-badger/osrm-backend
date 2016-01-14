@@ -203,8 +203,7 @@ class Contractor
             forward_edge.data.shortcut = reverse_edge.data.shortcut = false;
             forward_edge.data.id = reverse_edge.data.id = id;
             forward_edge.data.originalEdges = reverse_edge.data.originalEdges = 1;
-            forward_edge.data.distance = reverse_edge.data.distance =
-                std::numeric_limits<int>::max();
+            forward_edge.data.distance = reverse_edge.data.distance = INVALID_EDGE_WEIGHT;
             // remove parallel edges
             while (i < edges.size() && edges[i].source == source && edges[i].target == target)
             {
@@ -223,7 +222,7 @@ class Contractor
             // merge edges (s,t) and (t,s) into bidirectional edge
             if (forward_edge.data.distance == reverse_edge.data.distance)
             {
-                if ((int)forward_edge.data.distance != std::numeric_limits<int>::max())
+                if ((int)forward_edge.data.distance != INVALID_EDGE_WEIGHT)
                 {
                     forward_edge.data.backward = true;
                     edges[edge++] = forward_edge;
@@ -231,11 +230,11 @@ class Contractor
             }
             else
             { // insert seperate edges
-                if (((int)forward_edge.data.distance) != std::numeric_limits<int>::max())
+                if (((int)forward_edge.data.distance) != INVALID_EDGE_WEIGHT)
                 {
                     edges[edge++] = forward_edge;
                 }
-                if ((int)reverse_edge.data.distance != std::numeric_limits<int>::max())
+                if ((int)reverse_edge.data.distance != INVALID_EDGE_WEIGHT)
                 {
                     edges[edge++] = reverse_edge;
                 }
@@ -365,7 +364,7 @@ class Contractor
                 orig_node_id_from_new_node_id_map.resize(remaining_nodes.size());
                 // this map gives the new IDs from the old ones, necessary to remap targets from the
                 // remaining graph
-                std::vector<NodeID> new_node_id_from_orig_id_map(number_of_nodes, UINT_MAX);
+                std::vector<NodeID> new_node_id_from_orig_id_map(number_of_nodes, SPECIAL_NODEID);
 
                 for (const auto new_node_id : util::irange<std::size_t>(0, remaining_nodes.size()))
                 {
@@ -404,9 +403,9 @@ class Contractor
                                                        new_node_id_from_orig_id_map[target], data};
 
                             new_edge.data.is_original_via_node_ID = true;
-                            BOOST_ASSERT_MSG(UINT_MAX != new_node_id_from_orig_id_map[source],
+                            BOOST_ASSERT_MSG(SPECIAL_NODEID != new_node_id_from_orig_id_map[source],
                                              "new source id not resolveable");
-                            BOOST_ASSERT_MSG(UINT_MAX != new_node_id_from_orig_id_map[target],
+                            BOOST_ASSERT_MSG(SPECIAL_NODEID != new_node_id_from_orig_id_map[target],
                                              "new target id not resolveable");
                             new_edge_set.push_back(new_edge);
                         }
@@ -581,7 +580,7 @@ class Contractor
             remaining_nodes.resize(begin_independent_nodes_idx);
             //            unsigned maxdegree = 0;
             //            unsigned avgdegree = 0;
-            //            unsigned mindegree = UINT_MAX;
+            //            unsigned mindegree = SPECIAL_NODEID;
             //            unsigned quaddegree = 0;
             //
             //            for(unsigned i = 0; i < remaining_nodes.size(); ++i) {
@@ -686,8 +685,8 @@ class Contractor
                         new_edge.source = node;
                         new_edge.target = target;
                     }
-                    BOOST_ASSERT_MSG(UINT_MAX != new_edge.source, "Source id invalid");
-                    BOOST_ASSERT_MSG(UINT_MAX != new_edge.target, "Target id invalid");
+                    BOOST_ASSERT_MSG(SPECIAL_NODEID != new_edge.source, "Source id invalid");
+                    BOOST_ASSERT_MSG(SPECIAL_NODEID != new_edge.target, "Target id invalid");
                     new_edge.data.distance = data.distance;
                     new_edge.data.shortcut = data.shortcut;
                     if (!data.is_original_via_node_ID && !orig_node_id_from_new_node_id_map.empty())
@@ -752,12 +751,13 @@ class Contractor
         }
     }
 
-    inline int FindSelfLoop(const NodeID node, int max_distance, ContractorThreadData *const data)
+    inline int FindSelfLoopDistance(const NodeID node, int max_distance, ContractorThreadData &data)
     {
-        ContractorHeap &heap = data->heap;
+        auto &heap = data.heap;
         heap.Clear();
-        heap.Insert(node, INT_MAX, ContractorHeapData(0, true)); // mark the node itself as a target
-        RelaxNode(node, SPECIAL_NODEID, 0, heap);                // add its neighbors to the heap
+        heap.Insert(node, INVALID_EDGE_WEIGHT,
+                    ContractorHeapData(0, true)); // mark the node itself as a target
+        RelaxNode(node, SPECIAL_NODEID, 0, heap); // add its neighbors to the heap
         Dijkstra(max_distance, 1, 1000, data, SPECIAL_NODEID);
         return heap.GetKey(node);
     }
@@ -776,7 +776,7 @@ class Contractor
         while (!heap.Empty())
         {
             const NodeID node = heap.DeleteMin();
-            const int distance = heap.GetKey(node);
+            const auto distance = heap.GetKey(node);
             if (++nodes > maxNodes)
             {
                 return;
@@ -831,8 +831,13 @@ class Contractor
     ContractNode(ContractorThreadData *data, const NodeID node, ContractionStats *stats = nullptr)
     {
         ContractorHeap &heap = data->heap;
-        int inserted_edges_size = data->inserted_edges.size();
+        std::size_t inserted_edges_size = data->inserted_edges.size();
         std::vector<ContractorEdge> &inserted_edges = data->inserted_edges;
+        const constexpr bool SHORTCUT_ARC = true;
+        const constexpr bool FORWARD_DIRECTION_ENABLED = true;
+        const constexpr bool FORWARD_DIRECTION_DISABLED = false;
+        const constexpr bool REVERSE_DIRECTION_ENABLED = true;
+        const constexpr bool REVERSE_DIRECTION_DISABLED = false;
 
         for (auto in_edge : contractor_graph->GetAdjacentEdgeRange(node))
         {
@@ -855,7 +860,7 @@ class Contractor
             // Check for Potential Self-Loops, only add if self-loop is the shortest loop
             for (auto out_edge : contractor_graph->GetAdjacentEdgeRange(node))
             {
-                const ContractorEdgeData &out_data = contractor_graph->GetEdgeData(out_edge);
+                const auto &out_data = contractor_graph->GetEdgeData(out_edge);
                 if (out_data.forward)
                 {
                     const NodeID target = contractor_graph->GetTarget(out_edge);
@@ -868,7 +873,8 @@ class Contractor
                         // the self loop can be pruned as well
                         // Check for Self Loops
                         const int this_loop_distance = in_data.distance + out_data.distance;
-                        int self_loop_distance = FindSelfLoop(source, this_loop_distance, data);
+                        const auto self_loop_distance =
+                            FindSelfLoopDistance(source, this_loop_distance, *data);
                         if (self_loop_distance == this_loop_distance)
                         {
                             if (RUNSIMULATION)
@@ -880,15 +886,17 @@ class Contractor
                             }
                             else
                             {
-                                inserted_edges.emplace_back(source, target, this_loop_distance,
-                                                            out_data.originalEdges +
-                                                                in_data.originalEdges,
-                                                            node, true, true, false);
+                                inserted_edges.emplace_back(
+                                    source, target, this_loop_distance,
+                                    out_data.originalEdges + in_data.originalEdges, node,
+                                    SHORTCUT_ARC, FORWARD_DIRECTION_ENABLED,
+                                    REVERSE_DIRECTION_DISABLED);
 
-                                inserted_edges.emplace_back(target, source, this_loop_distance,
-                                                            out_data.originalEdges +
-                                                                in_data.originalEdges,
-                                                            node, true, false, true);
+                                inserted_edges.emplace_back(
+                                    target, source, this_loop_distance,
+                                    out_data.originalEdges + in_data.originalEdges, node,
+                                    SHORTCUT_ARC, FORWARD_DIRECTION_DISABLED,
+                                    REVERSE_DIRECTION_ENABLED);
                             }
                         }
                         break;
@@ -915,7 +923,7 @@ class Contractor
                 max_distance = std::max(max_distance, path_distance);
                 if (!heap.WasInserted(target))
                 {
-                    heap.Insert(target, INT_MAX, ContractorHeapData(0, true));
+                    heap.Insert(target, INVALID_EDGE_WEIGHT, ContractorHeapData(0, true));
                     ++number_of_targets;
                 }
             }
@@ -953,11 +961,13 @@ class Contractor
                     {
                         inserted_edges.emplace_back(source, target, path_distance,
                                                     out_data.originalEdges + in_data.originalEdges,
-                                                    node, true, true, false);
+                                                    node, SHORTCUT_ARC, FORWARD_DIRECTION_ENABLED,
+                                                    REVERSE_DIRECTION_DISABLED);
 
                         inserted_edges.emplace_back(target, source, path_distance,
                                                     out_data.originalEdges + in_data.originalEdges,
-                                                    node, true, false, true);
+                                                    node, SHORTCUT_ARC, FORWARD_DIRECTION_DISABLED,
+                                                    REVERSE_DIRECTION_ENABLED);
                     }
                 }
             }
@@ -966,8 +976,8 @@ class Contractor
 
         if (!RUNSIMULATION)
         {
-            int iend = inserted_edges.size();
-            for (int i = inserted_edges_size; i < iend; ++i)
+            std::size_t iend = inserted_edges.size();
+            for (std::size_t i = inserted_edges_size; i < iend; ++i)
             {
                 bool found = false;
                 for (int other = i + 1; other < iend; ++other)

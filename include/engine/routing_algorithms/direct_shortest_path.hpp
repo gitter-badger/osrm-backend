@@ -93,7 +93,8 @@ class DirectShortestPathRouting final
         int distance = INVALID_EDGE_WEIGHT;
         std::vector<NodeID> packed_leg;
 
-        const bool constexpr DO_NOT_FORCE_LOOPS = false;    //prevents forcing of loops, since offsets are set correctly
+        const bool constexpr DO_NOT_FORCE_LOOPS =
+            false; // prevents forcing of loops, since offsets are set correctly
 
         if (super::facade->GetCoreSize() > 0)
         {
@@ -109,7 +110,8 @@ class DirectShortestPathRouting final
         }
         else
         {
-            super::Search(forward_heap, reverse_heap, distance, packed_leg, DO_NOT_FORCE_LOOPS, DO_NOT_FORCE_LOOPS);
+            super::Search(forward_heap, reverse_heap, distance, packed_leg, DO_NOT_FORCE_LOOPS,
+                          DO_NOT_FORCE_LOOPS);
         }
 
         // No path found for both target nodes?

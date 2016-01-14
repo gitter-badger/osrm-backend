@@ -279,7 +279,7 @@ int Extractor::run()
         TIMER_STOP(expansion);
 
         util::SimpleLogger().Write() << "Remembering One-Ways for " << node_based_edge_list.size()
-                               << " edge-based-nodes.";
+                                     << " edge-based-nodes.";
 
         util::SimpleLogger().Write() << "building r-tree ...";
         TIMER_START(rtree);
@@ -606,7 +606,8 @@ void Extractor::WriteEdgeBasedGraph(
     const util::FingerPrint fingerprint = util::FingerPrint::GetValid();
     file_out_stream.write((char *)&fingerprint, sizeof(util::FingerPrint));
 
-    util::SimpleLogger().Write() << "[extractor] Writing edge-based-graph egdes       ... " << std::flush;
+    util::SimpleLogger().Write() << "[extractor] Writing edge-based-graph egdes       ... "
+                                 << std::flush;
     TIMER_START(write_edges);
 
     size_t number_of_used_edges = edge_based_edge_list.size();

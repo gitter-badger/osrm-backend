@@ -634,7 +634,8 @@ class AlternativeRouting final
                             {
                                 const int edge_weight = data.distance;
                                 const int loop_distance = new_distance + edge_weight;
-                                if (loop_distance >= 0 && loop_distance < *upper_bound_to_shortest_path_distance)
+                                if (loop_distance >= 0 &&
+                                    loop_distance < *upper_bound_to_shortest_path_distance)
                                 {
                                     *middle_node = node;
                                     *upper_bound_to_shortest_path_distance = loop_distance;

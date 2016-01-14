@@ -24,6 +24,9 @@ class ShortestPathRouting final
     using super = BasicRoutingInterface<DataFacadeT, ShortestPathRouting<DataFacadeT>>;
     using QueryHeap = SearchEngineData::QueryHeap;
     SearchEngineData &engine_working_data;
+    const constexpr bool FORWARD_DIRECTION = true;
+    const constexpr bool REVERSE_DIRECTION = false;
+    const constexpr bool DO_NOT_FORCE_LOOP = false;
 
   public:
     ShortestPathRouting(DataFacadeT *facade, SearchEngineData &engine_working_data)
@@ -32,6 +35,19 @@ class ShortestPathRouting final
     }
 
     ~ShortestPathRouting() {}
+
+    inline bool
+    forceLoop(bool forward, const PhantomNode &source_phantom, const PhantomNode &target_node)
+    {
+        if (forward)
+            return source_phantom.forward_node_id == target_phantom.forward_node_id &&
+                   source_phantom.GetForwardWeightPlusOffset() >
+                       target_phantom.GetForwardWeightPlusOffset();
+        else
+            return source_phantom.reverse_node_id == target_phantom.reverse_node_id &&
+                   source_phantom.GetReverseWeightPlusOffset() >
+                       target_phantom.GetReverseWeightPlusOffset();
+    };
 
     // allows a uturn at the target_phantom
     // searches source forward/reverse -> target forward/reverse
@@ -77,22 +93,11 @@ class ShortestPathRouting final
                                 target_phantom.reverse_node_id);
         }
 
-        const auto forceLoop = [&source_phantom, &target_phantom](bool forward)
-        {
-            if (forward)
-                return source_phantom.forward_node_id == target_phantom.forward_node_id &&
-                       source_phantom.GetForwardWeightPlusOffset() >
-                           target_phantom.GetForwardWeightPlusOffset();
-            else
-                return source_phantom.reverse_node_id == target_phantom.reverse_node_id &&
-                       source_phantom.GetReverseWeightPlusOffset() >
-                           target_phantom.GetReverseWeightPlusOffset();
-        };
-
         BOOST_ASSERT(forward_heap.Size() > 0);
         BOOST_ASSERT(reverse_heap.Size() > 0);
         super::Search(forward_heap, reverse_heap, new_total_distance, leg_packed_path,
-                      forceLoop(true), forceLoop(false));
+                      forceLoop(FORWARD_DIRECTION, source_phantom, target_phantom),
+                      forceLoop(REVERSE_DIRECTION, source_phantom, target_phantom));
     }
 
     // searches shortest path between:
@@ -137,12 +142,9 @@ class ShortestPathRouting final
             }
             BOOST_ASSERT(forward_heap.Size() > 0);
             BOOST_ASSERT(reverse_heap.Size() > 0);
-            super::Search(forward_heap, reverse_heap, new_total_distance_to_forward,
-                          leg_packed_path_forward,
-                          source_phantom.forward_node_id == target_phantom.forward_node_id &&
-                              source_phantom.GetForwardWeightPlusOffset() >
-                                  target_phantom.GetForwardWeightPlusOffset(),
-                          false);
+            super::Search(
+                forward_heap, reverse_heap, new_total_distance_to_forward, leg_packed_path_forward,
+                forceLoop(FORWARD_DIRECTION, source_phantom, target_phantom), DO_NOT_FORCE_LOOP);
         }
 
         if (search_to_reverse_node)
@@ -169,10 +171,8 @@ class ShortestPathRouting final
             BOOST_ASSERT(forward_heap.Size() > 0);
             BOOST_ASSERT(reverse_heap.Size() > 0);
             super::Search(forward_heap, reverse_heap, new_total_distance_to_reverse,
-                          leg_packed_path_reverse, false,
-                          source_phantom.reverse_node_id == target_phantom.reverse_node_id &&
-                              source_phantom.GetReverseWeightPlusOffset() >
-                                  target_phantom.GetReverseWeightPlusOffset());
+                          leg_packed_path_reverse, DO_NOT_FORCE_LOOP,
+                          forceLoop(REVERSE_DIRECTION, source_phantom, target_phantom));
         }
     }
 
