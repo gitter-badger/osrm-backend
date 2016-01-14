@@ -80,7 +80,8 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
     {
         const NodeID node = forward_heap.DeleteMin();
         const int distance = forward_heap.GetKey(node);
-        std::cout << "[" << forward_direction << "] " << node << " for " << distance << std::endl;
+
+        std::cout << "[" << (forward_direction ? "FW" : "BW") << "] " << node << " - " << distance << std::endl;
 
         if (reverse_heap.WasInserted(node))
         {
@@ -91,9 +92,9 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                     && (!force_loop_forward || forward_heap.GetData(node).parent != node) //if loops are forced, they are so at the source
                     && (!force_loop_reverse || reverse_heap.GetData(node).parent != node))
                 {
-                    std::cout << "[Candidate] " << node << " Dist: " << new_distance << std::endl;
                     middle_node_id = node;
                     upper_bound = new_distance;
+                    std::cout << "Candidate: " << middle_node_id << " for " << upper_bound << std::endl;
                 }
                 else
                 {
@@ -110,12 +111,11 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                             {
                                 const int edge_weight = data.distance;
                                 const int loop_distance = new_distance + edge_weight;
-                                if (loop_distance >= 0)
+                                if (loop_distance >= 0 && loop_distance < upper_bound)
                                 {
-                                    std::cout << "[Loop Candidate] " << node
-                                              << "Dist: " << loop_distance << std::endl;
                                     middle_node_id = node;
                                     upper_bound = loop_distance;
+                                    std::cout << "Loop Candidate: " << middle_node_id << " for " << upper_bound << std::endl;
                                 }
                             }
                         }
@@ -216,7 +216,6 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
             //            edge_id
             edge = recursion_stack.top();
             recursion_stack.pop();
-            std::cout << "At: " << edge.first << " " << edge.second << std::endl;
 
             // facade->FindEdge does not suffice here in case of shortcuts.
             // The above explanation unclear? Think!
@@ -249,7 +248,6 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                     }
                 }
             }
-            std::cout << "Edge: " << smaller_edge_id << " -- " << edge_weight << std::endl;
             BOOST_ASSERT_MSG(edge_weight != INVALID_EDGE_WEIGHT, "edge id invalid");
 
             const EdgeData &ed = facade->GetEdgeData(smaller_edge_id);
@@ -300,7 +298,6 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                     unpacked_path.back().turn_instruction = turn_instruction;
                     unpacked_path.back().segment_duration = ed.distance;
                 }
-                std::cout << "Size: " << unpacked_path.size() <<  " Turn: " << (int)unpacked_path.back().turn_instruction << std::endl;
             }
         }
         if (SPECIAL_EDGEID != phantom_node_pair.target_phantom.packed_geometry_id)
@@ -466,6 +463,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         // we only every insert negative offsets for nodes in the forward heap
         BOOST_ASSERT(reverse_heap.MinKey() >= 0);
 
+        std::cout << "Search: " << force_loop_forward << " and " << force_loop_reverse << std::endl;
         // run two-Target Dijkstra routing step.
         const constexpr bool STALLING_ENABLED = true;
         while (0 < (forward_heap.Size() + reverse_heap.Size()))
@@ -480,7 +478,6 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
             }
         }
 
-        std::cout << "Distance: " << distance << " Middle: " << middle << std::endl;
         // No path found for both target nodes?
         if (INVALID_EDGE_WEIGHT == distance || SPECIAL_NODEID == middle)
         {
@@ -491,6 +488,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         BOOST_ASSERT_MSG((SPECIAL_NODEID != middle && INVALID_EDGE_WEIGHT != distance),
                          "no path found");
 
+        std::cout << "Result: " << distance << " at " << middle << std::endl;
         // make sure to correctly unpack loops
         if (distance != forward_heap.GetKey(middle) + reverse_heap.GetKey(middle))
         {
@@ -720,7 +718,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         if (upper_bound != INVALID_EDGE_WEIGHT)
         {
             std::vector<NodeID> packed_leg;
-            if (distance != forward_heap.GetKey(middle_node) + reverse_heap.GetKey(middle_node))
+            if (upper_bound != forward_heap.GetKey(middle_node) + reverse_heap.GetKey(middle_node))
             {
                 // self loop
                 BOOST_ASSERT(forward_heap.GetKey(middle) + reverse_heap.GetKey(middle) < 0);
