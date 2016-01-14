@@ -24,9 +24,9 @@ class ShortestPathRouting final
     using super = BasicRoutingInterface<DataFacadeT, ShortestPathRouting<DataFacadeT>>;
     using QueryHeap = SearchEngineData::QueryHeap;
     SearchEngineData &engine_working_data;
-    const constexpr bool FORWARD_DIRECTION = true;
-    const constexpr bool REVERSE_DIRECTION = false;
-    const constexpr bool DO_NOT_FORCE_LOOP = false;
+    const static constexpr bool FORWARD_DIRECTION = true;
+    const static constexpr bool REVERSE_DIRECTION = false;
+    const static constexpr bool DO_NOT_FORCE_LOOP = false;
 
   public:
     ShortestPathRouting(DataFacadeT *facade, SearchEngineData &engine_working_data)
@@ -37,7 +37,7 @@ class ShortestPathRouting final
     ~ShortestPathRouting() {}
 
     inline bool
-    forceLoop(bool forward, const PhantomNode &source_phantom, const PhantomNode &target_node)
+    forceLoop(bool forward, const PhantomNode &source_phantom, const PhantomNode &target_phantom) const
     {
         if (forward)
             return source_phantom.forward_node_id == target_phantom.forward_node_id &&

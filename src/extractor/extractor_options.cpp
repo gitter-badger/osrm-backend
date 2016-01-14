@@ -147,7 +147,6 @@ void ExtractorOptions::GenerateOutputFilesNames(ExtractorConfig &extractor_confi
     extractor_config.rtree_leafs_output_path = input_path.string();
     extractor_config.edge_segment_lookup_path = input_path.string();
     extractor_config.edge_penalty_path = input_path.string();
-    extractor_config.oneway_flags_file_name = input_path.string();
     std::string::size_type pos = extractor_config.output_file_name.find(".osm.bz2");
     if (pos == std::string::npos)
     {
@@ -178,7 +177,6 @@ void ExtractorOptions::GenerateOutputFilesNames(ExtractorConfig &extractor_confi
             extractor_config.rtree_leafs_output_path.append(".osrm.fileIndex");
             extractor_config.edge_segment_lookup_path.append(".osrm.edge_segment_lookup");
             extractor_config.edge_penalty_path.append(".osrm.edge_penalties");
-            extractor_config.oneway_flags_file_name.append(".osrm.osi");
         }
         else
         {
@@ -194,7 +192,6 @@ void ExtractorOptions::GenerateOutputFilesNames(ExtractorConfig &extractor_confi
             extractor_config.rtree_leafs_output_path.replace(pos, 5, ".osrm.fileIndex");
             extractor_config.edge_segment_lookup_path.replace(pos, 5, ".osrm.edge_segment_lookup");
             extractor_config.edge_penalty_path.replace(pos, 5, ".osrm.edge_penalties");
-            extractor_config.oneway_flags_file_name.replace(pos, 5, ".osrm.osi");
         }
     }
     else
@@ -211,7 +208,6 @@ void ExtractorOptions::GenerateOutputFilesNames(ExtractorConfig &extractor_confi
         extractor_config.rtree_leafs_output_path.replace(pos, 8, ".osrm.fileIndex");
         extractor_config.edge_segment_lookup_path.replace(pos, 8, ".osrm.edge_segment_lookup");
         extractor_config.edge_penalty_path.replace(pos, 8, ".osrm.edge_penalties");
-        extractor_config.oneway_flags_file_name.replace(pos, 8, ".osrm.osi");
     }
 }
 }

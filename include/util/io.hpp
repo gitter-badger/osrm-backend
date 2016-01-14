@@ -4,11 +4,11 @@
 #include "util/simple_logger.hpp"
 
 #include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
 
 #include <cstddef>
 #include <cstdint>
 
+#include <iostream>
 #include <bitset>
 #include <vector>
 
@@ -21,7 +21,7 @@ inline bool serializeFlags(const boost::filesystem::path &path, const std::vecto
 {
     // TODO this should be replaced with a FILE-based write using error checking
     std::uint32_t number_of_bits = flags.size();
-    boost::filesystem::ofstream flag_stream(path, std::ios::binary);
+    std::ofstream flag_stream(path.string(), std::ios::binary);
     flag_stream.write(reinterpret_cast<const char *>(&number_of_bits), sizeof(number_of_bits));
     // putting bits in ints
     std::uint32_t chunk = 0;
@@ -39,14 +39,14 @@ inline bool serializeFlags(const boost::filesystem::path &path, const std::vecto
     }
     util::SimpleLogger().Write() << "Wrote " << number_of_bits << " bits in " << chunk_count
                                  << " chunks (Flags).";
-    return flag_stream;
+    return static_cast<bool>(flag_stream);
 }
 
 inline bool deserializeFlags(const boost::filesystem::path &path, std::vector<bool> &flags)
 {
     util::SimpleLogger().Write() << "Reading flags from " << path;
     std::uint32_t number_of_bits;
-    boost::filesystem::ifstream flag_stream(path, std::ios::binary);
+    std::ifstream flag_stream(path.string(), std::ios::binary);
     flag_stream.read(reinterpret_cast<char *>(&number_of_bits), sizeof(number_of_bits));
     flags.resize(number_of_bits);
     // putting bits in ints
@@ -62,7 +62,7 @@ inline bool deserializeFlags(const boost::filesystem::path &path, std::vector<bo
     }
     util::SimpleLogger().Write() << "Read " << number_of_bits << " bits in " << chunks
                                  << " Chunks from disk.";
-    return flag_stream;
+    return static_cast<bool>(flag_stream);
 }
 } // namespace util
 } // namespace osrm

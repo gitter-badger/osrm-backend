@@ -765,11 +765,11 @@ class Contractor
     inline void Dijkstra(const int max_distance,
                          const unsigned number_of_targets,
                          const int maxNodes,
-                         ContractorThreadData *const data,
+                         ContractorThreadData & data,
                          const NodeID middleNode)
     {
 
-        ContractorHeap &heap = data->heap;
+        ContractorHeap &heap = data.heap;
 
         int nodes = 0;
         unsigned number_of_targets_found = 0;
@@ -930,11 +930,11 @@ class Contractor
 
             if (RUNSIMULATION)
             {
-                Dijkstra(max_distance, number_of_targets, 1000, data, node);
+                Dijkstra(max_distance, number_of_targets, 1000, *data, node);
             }
             else
             {
-                Dijkstra(max_distance, number_of_targets, 2000, data, node);
+                Dijkstra(max_distance, number_of_targets, 2000, *data, node);
             }
             for (auto out_edge : contractor_graph->GetAdjacentEdgeRange(node))
             {
@@ -980,7 +980,7 @@ class Contractor
             for (std::size_t i = inserted_edges_size; i < iend; ++i)
             {
                 bool found = false;
-                for (int other = i + 1; other < iend; ++other)
+                for (std::size_t other = i + 1; other < iend; ++other)
                 {
                     if (inserted_edges[other].source != inserted_edges[i].source)
                     {
