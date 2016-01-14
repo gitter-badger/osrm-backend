@@ -143,10 +143,30 @@ class ManyToManyRouting final
                     (*result_table)[source_id * number_of_targets + target_id];
                 // check if new distance is better
                 const EdgeWeight new_distance = source_distance + target_distance;
-                if (new_distance >= 0 && new_distance < current_distance)
+                if (new_distance < 0)
                 {
-                    (*result_table)[source_id * number_of_targets + target_id] =
-                        (source_distance + target_distance);
+                    for (auto edge : super::facade->GetAdjacentEdgeRange(node))
+                    {
+                        const auto &data = super::facade->GetEdgeData(edge);
+                        if (data.forward)
+                        {
+                            const NodeID to = super::facade->GetTarget(edge);
+                            if (to == node)
+                            {
+                                const int edge_weight = data.distance;
+                                const int loop_distance = new_distance + edge_weight;
+                                if (loop_distance >= 0 && loop_distance < current_distance)
+                                {
+                                    (*result_table)[source_id * number_of_targets + target_id] =
+                                        loop_distance;
+                                }
+                            }
+                        }
+                    }
+                }
+                else if (new_distance < current_distance)
+                {
+                    (*result_table)[source_id * number_of_targets + target_id] = new_distance;
                 }
             }
         }

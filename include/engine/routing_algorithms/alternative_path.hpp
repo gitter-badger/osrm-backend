@@ -156,8 +156,23 @@ class AlternativeRouting final
         std::vector<NodeID> packed_forward_path;
         std::vector<NodeID> packed_reverse_path;
 
-        super::RetrievePackedPathFromSingleHeap(forward_heap1, middle_node, packed_forward_path);
-        super::RetrievePackedPathFromSingleHeap(reverse_heap1, middle_node, packed_reverse_path);
+        if (upper_bound_to_shortest_path_distance !=
+            forward_heap1.GetKey(middle_node) + reverse_heap1.GetKey(middle_node))
+        {
+            // Self Loop
+            BOOST_ASSERT(forward_heap1.GetData(middle_node).parent == middle_node &&
+                         reverse_heap1.GetData(middle_node).parent == middle_node);
+            packed_forward_path.push_back(middle_node);
+            packed_forward_path.push_back(middle_node);
+        }
+        else
+        {
+
+            super::RetrievePackedPathFromSingleHeap(forward_heap1, middle_node,
+                                                    packed_forward_path);
+            super::RetrievePackedPathFromSingleHeap(reverse_heap1, middle_node,
+                                                    packed_reverse_path);
+        }
 
         // this set is is used as an indicator if a node is on the shortest path
         std::unordered_set<NodeID> nodes_in_path(packed_forward_path.size() +
@@ -387,7 +402,8 @@ class AlternativeRouting final
         while (!new_reverse_heap.Empty())
         {
             super::RoutingStep(new_reverse_heap, existing_forward_heap, s_v_middle,
-                               upper_bound_s_v_path_length, min_edge_offset, false, STALLING_ENABLED, DO_NOT_FORCE_LOOPS, DO_NOT_FORCE_LOOPS);
+                               upper_bound_s_v_path_length, min_edge_offset, false,
+                               STALLING_ENABLED, DO_NOT_FORCE_LOOPS, DO_NOT_FORCE_LOOPS);
         }
         // compute path <v,..,t> by reusing backward search from node t
         NodeID v_t_middle = SPECIAL_NODEID;
@@ -396,7 +412,8 @@ class AlternativeRouting final
         while (!new_forward_heap.Empty())
         {
             super::RoutingStep(new_forward_heap, existing_reverse_heap, v_t_middle,
-                               upper_bound_of_v_t_path_length, min_edge_offset, true, STALLING_ENABLED, DO_NOT_FORCE_LOOPS, DO_NOT_FORCE_LOOPS);
+                               upper_bound_of_v_t_path_length, min_edge_offset, true,
+                               STALLING_ENABLED, DO_NOT_FORCE_LOOPS, DO_NOT_FORCE_LOOPS);
         }
         *real_length_of_via_path = upper_bound_s_v_path_length + upper_bound_of_v_t_path_length;
 
@@ -444,10 +461,10 @@ class AlternativeRouting final
                                           partially_unpacked_shortest_path.size())) -
             1;
         for (int64_t current_node = 0; (current_node < packed_path_length) &&
-                                           (partially_unpacked_via_path[current_node] ==
-                                                partially_unpacked_shortest_path[current_node] &&
-                                            partially_unpacked_via_path[current_node + 1] ==
-                                                partially_unpacked_shortest_path[current_node + 1]);
+                                       (partially_unpacked_via_path[current_node] ==
+                                            partially_unpacked_shortest_path[current_node] &&
+                                        partially_unpacked_via_path[current_node + 1] ==
+                                            partially_unpacked_shortest_path[current_node + 1]);
              ++current_node)
         {
             EdgeID selected_edge =
@@ -602,6 +619,30 @@ class AlternativeRouting final
                     //     << "
                     //     at distance " << new_distance;
                 }
+                else
+                {
+                    // check whether there is a loop present at the node
+                    for (const auto edge : facade->GetAdjacentEdgeRange(node))
+                    {
+                        const EdgeData &data = facade->GetEdgeData(edge);
+                        bool forward_directionFlag =
+                            (is_forward_directed ? data.forward : data.backward);
+                        if (forward_directionFlag)
+                        {
+                            const NodeID to = facade->GetTarget(edge);
+                            if (to == node)
+                            {
+                                const int edge_weight = data.distance;
+                                const int loop_distance = new_distance + edge_weight;
+                                if (loop_distance >= 0 && loop_distance < *upper_bound_to_shortest_path_distance)
+                                {
+                                    *middle_node = node;
+                                    *upper_bound_to_shortest_path_distance = loop_distance;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -662,7 +703,8 @@ class AlternativeRouting final
         while (new_reverse_heap.Size() > 0)
         {
             super::RoutingStep(new_reverse_heap, existing_forward_heap, *s_v_middle,
-                               upper_bound_s_v_path_length, min_edge_offset, false, STALLING_ENABLED, DO_NOT_FORCE_LOOPS, DO_NOT_FORCE_LOOPS);
+                               upper_bound_s_v_path_length, min_edge_offset, false,
+                               STALLING_ENABLED, DO_NOT_FORCE_LOOPS, DO_NOT_FORCE_LOOPS);
         }
 
         if (INVALID_EDGE_WEIGHT == upper_bound_s_v_path_length)
@@ -677,7 +719,8 @@ class AlternativeRouting final
         while (new_forward_heap.Size() > 0)
         {
             super::RoutingStep(new_forward_heap, existing_reverse_heap, *v_t_middle,
-                               upper_bound_of_v_t_path_length, min_edge_offset, true, STALLING_ENABLED, DO_NOT_FORCE_LOOPS, DO_NOT_FORCE_LOOPS);
+                               upper_bound_of_v_t_path_length, min_edge_offset, true,
+                               STALLING_ENABLED, DO_NOT_FORCE_LOOPS, DO_NOT_FORCE_LOOPS);
         }
 
         if (INVALID_EDGE_WEIGHT == upper_bound_of_v_t_path_length)
@@ -845,12 +888,14 @@ class AlternativeRouting final
             if (!forward_heap3.Empty())
             {
                 super::RoutingStep(forward_heap3, reverse_heap3, middle, upper_bound,
-                                   min_edge_offset, true, STALLING_ENABLED, DO_NOT_FORCE_LOOPS, DO_NOT_FORCE_LOOPS);
+                                   min_edge_offset, true, STALLING_ENABLED, DO_NOT_FORCE_LOOPS,
+                                   DO_NOT_FORCE_LOOPS);
             }
             if (!reverse_heap3.Empty())
             {
                 super::RoutingStep(reverse_heap3, forward_heap3, middle, upper_bound,
-                                   min_edge_offset, false, STALLING_ENABLED, DO_NOT_FORCE_LOOPS, DO_NOT_FORCE_LOOPS);
+                                   min_edge_offset, false, STALLING_ENABLED, DO_NOT_FORCE_LOOPS,
+                                   DO_NOT_FORCE_LOOPS);
             }
         }
         return (upper_bound <= t_test_path_length);
