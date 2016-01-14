@@ -729,9 +729,9 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
             if (upper_bound != forward_heap.GetKey(middle_node) + reverse_heap.GetKey(middle_node))
             {
                 // self loop
-                BOOST_ASSERT(forward_heap.GetKey(middle) + reverse_heap.GetKey(middle) < 0);
-                BOOST_ASSERT(forward_heap.GetData(middle).parent == middle &&
-                             reverse_heap.GetData(middle).parent == middle);
+                BOOST_ASSERT(forward_heap.GetKey(middle_node) + reverse_heap.GetKey(middle_node) < 0);
+                BOOST_ASSERT(forward_heap.GetData(middle_node).parent == middle_node &&
+                             reverse_heap.GetData(middle_node).parent == middle_node);
                 packed_leg.push_back(middle_node);
                 packed_leg.push_back(middle_node);
             }
