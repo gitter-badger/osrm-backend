@@ -145,9 +145,7 @@ class Contractor
     }
 
     template <class ContainerT>
-    Contractor(int nodes,
-               ContainerT &input_edge_list,
-               std::vector<float> &&node_levels_ )
+    Contractor(int nodes, ContainerT &input_edge_list, std::vector<float> &&node_levels_)
         : node_levels(std::move(node_levels_))
     {
         std::vector<ContractorEdge> edges;
@@ -345,7 +343,7 @@ class Contractor
 
         unsigned current_level = 0;
         bool flushed_contractor = false;
-        while (number_of_nodes > 1 &&
+        while (number_of_nodes > 2 &&
                number_of_contracted_nodes < static_cast<NodeID>(number_of_nodes * core_factor))
         {
             if (!flushed_contractor && (number_of_contracted_nodes >
@@ -720,8 +718,10 @@ class Contractor
     }
 
   private:
-    inline void
-    RelaxNode(const NodeID node, const NodeID forbidden_node, const int distance, ContractorHeap &heap)
+    inline void RelaxNode(const NodeID node,
+                          const NodeID forbidden_node,
+                          const int distance,
+                          ContractorHeap &heap)
     {
         const short current_hop = heap.GetData(node).hop + 1;
         for (auto edge : contractor_graph->GetAdjacentEdgeRange(node))
@@ -757,7 +757,7 @@ class Contractor
         ContractorHeap &heap = data->heap;
         heap.Clear();
         heap.Insert(node, INT_MAX, ContractorHeapData(0, true)); // mark the node itself as a target
-        RelaxNode(node, SPECIAL_NODEID, 0, heap);                   // add its neighbors to the heap
+        RelaxNode(node, SPECIAL_NODEID, 0, heap);                // add its neighbors to the heap
         Dijkstra(max_distance, 1, 1000, data, SPECIAL_NODEID);
         return heap.GetKey(node);
     }
@@ -852,7 +852,7 @@ class Contractor
                 continue;
             }
 
-            //Check for Potential Self-Loops, only add if self-loop is the shortest loop
+            // Check for Potential Self-Loops, only add if self-loop is the shortest loop
             for (auto out_edge : contractor_graph->GetAdjacentEdgeRange(node))
             {
                 const ContractorEdgeData &out_data = contractor_graph->GetEdgeData(out_edge);
@@ -861,8 +861,10 @@ class Contractor
                     const NodeID target = contractor_graph->GetTarget(out_edge);
                     if (source == target)
                     {
-                        // TODO we could prune some of these self-loops if we new about the weight along the
-                        // edge represented by `node` itself. If the self-loop is longer than the edge,
+                        // TODO we could prune some of these self-loops if we new about the weight
+                        // along the
+                        // edge represented by `node` itself. If the self-loop is longer than the
+                        // edge,
                         // the self loop can be pruned as well
                         // Check for Self Loops
                         const int this_loop_distance = in_data.distance + out_data.distance;

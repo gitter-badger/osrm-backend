@@ -81,7 +81,6 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         const NodeID node = forward_heap.DeleteMin();
         const int distance = forward_heap.GetKey(node);
 
-        std::cout << "[" << (forward_direction ? "FW" : "BW") << "] " << node << " - " << distance << std::endl;
 
         if (reverse_heap.WasInserted(node))
         {
@@ -94,7 +93,6 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                 {
                     middle_node_id = node;
                     upper_bound = new_distance;
-                    std::cout << "Candidate: " << middle_node_id << " for " << upper_bound << std::endl;
                 }
                 else
                 {
@@ -115,7 +113,6 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                                 {
                                     middle_node_id = node;
                                     upper_bound = loop_distance;
-                                    std::cout << "Loop Candidate: " << middle_node_id << " for " << upper_bound << std::endl;
                                 }
                             }
                         }
@@ -447,7 +444,12 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
 
     // assumes that heaps are already setup correctly.
     // ATTENTION: This only works if no additional offset is supplied next to the Phantom Node Offsets.
-    // In case additional offsets are supplied, you might have to force a loop first
+    // In case additional offsets are supplied, you might have to force a loop first.
+    // A forced loop might be necessary, if source and target are on the same segment.
+    // If this is the case and the offsets of the respective direction are larger for the source than the target
+    // then a force loop is required (e.g. source_phantom.forward_node_id == target_phantom.forward_node_id
+    // && source_phantom.GetForwardWeightPlusOffset() > target_phantom.GetForwardWeightPlusOffset()) requires
+    // a force loop, if the heaps have been initialized with positive offsets.
     void Search(SearchEngineData::QueryHeap &forward_heap,
                 SearchEngineData::QueryHeap &reverse_heap,
                 int &distance,
@@ -463,7 +465,6 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         // we only every insert negative offsets for nodes in the forward heap
         BOOST_ASSERT(reverse_heap.MinKey() >= 0);
 
-        std::cout << "Search: " << force_loop_forward << " and " << force_loop_reverse << std::endl;
         // run two-Target Dijkstra routing step.
         const constexpr bool STALLING_ENABLED = true;
         while (0 < (forward_heap.Size() + reverse_heap.Size()))
@@ -488,7 +489,6 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         BOOST_ASSERT_MSG((SPECIAL_NODEID != middle && INVALID_EDGE_WEIGHT != distance),
                          "no path found");
 
-        std::cout << "Result: " << distance << " at " << middle << std::endl;
         // make sure to correctly unpack loops
         if (distance != forward_heap.GetKey(middle) + reverse_heap.GetKey(middle))
         {
@@ -506,6 +506,11 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
     }
 
     // assumes that heaps are already setup correctly.
+    // A forced loop might be necessary, if source and target are on the same segment.
+    // If this is the case and the offsets of the respective direction are larger for the source than the target
+    // then a force loop is required (e.g. source_phantom.forward_node_id == target_phantom.forward_node_id
+    // && source_phantom.GetForwardWeightPlusOffset() > target_phantom.GetForwardWeightPlusOffset()) requires
+    // a force loop, if the heaps have been initialized with positive offsets.
     void SearchWithCore(SearchEngineData::QueryHeap &forward_heap,
                         SearchEngineData::QueryHeap &reverse_heap,
                         SearchEngineData::QueryHeap &forward_core_heap,
@@ -659,6 +664,9 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         }
     }
 
+    //Requires the heaps for be empty
+    //If heaps should be adjusted to be initialized outside of this function,
+    //the addition of force_loop parameters might be required
     double get_network_distance(SearchEngineData::QueryHeap &forward_heap,
                                 SearchEngineData::QueryHeap &reverse_heap,
                                 const PhantomNode &source_phantom,

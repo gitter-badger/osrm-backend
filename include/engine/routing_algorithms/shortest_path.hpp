@@ -113,11 +113,8 @@ class ShortestPathRouting final
                 std::vector<NodeID> &leg_packed_path_forward,
                 std::vector<NodeID> &leg_packed_path_reverse) const
     {
-        std::cout << "Search Leg" << std::endl;
         if (search_to_forward_node)
         {
-            std::cout << "RW: " << target_phantom.forward_node_id
-                      << " Of: " << target_phantom.GetForwardWeightPlusOffset() << std::endl;
             forward_heap.Clear();
             reverse_heap.Clear();
             reverse_heap.Insert(target_phantom.forward_node_id,
@@ -126,8 +123,6 @@ class ShortestPathRouting final
 
             if (search_from_forward_node)
             {
-                std::cout << "\tFW: " << source_phantom.forward_node_id
-                          << " Of: " << -source_phantom.GetForwardWeightPlusOffset() << std::endl;
                 forward_heap.Insert(source_phantom.forward_node_id,
                                     total_distance_to_forward -
                                         source_phantom.GetForwardWeightPlusOffset(),
@@ -135,8 +130,6 @@ class ShortestPathRouting final
             }
             if (search_from_reverse_node)
             {
-                std::cout << "\tFW: " << source_phantom.reverse_node_id
-                          << " Of: " << -source_phantom.GetReverseWeightPlusOffset() << std::endl;
                 forward_heap.Insert(source_phantom.reverse_node_id,
                                     total_distance_to_reverse -
                                         source_phantom.GetReverseWeightPlusOffset(),
@@ -156,15 +149,11 @@ class ShortestPathRouting final
         {
             forward_heap.Clear();
             reverse_heap.Clear();
-            std::cout << "RW " << target_phantom.reverse_node_id
-                      << " Of: " << target_phantom.GetReverseWeightPlusOffset() << std::endl;
             reverse_heap.Insert(target_phantom.reverse_node_id,
                                 target_phantom.GetReverseWeightPlusOffset(),
                                 target_phantom.reverse_node_id);
             if (search_from_forward_node)
             {
-                std::cout << "\tFW: " << source_phantom.forward_node_id
-                          << " Of: " << -source_phantom.GetForwardWeightPlusOffset() << std::endl;
                 forward_heap.Insert(source_phantom.forward_node_id,
                                     total_distance_to_forward -
                                         source_phantom.GetForwardWeightPlusOffset(),
@@ -172,8 +161,6 @@ class ShortestPathRouting final
             }
             if (search_from_reverse_node)
             {
-                std::cout << "\tFW: " << source_phantom.reverse_node_id
-                          << " Of: " << -source_phantom.GetReverseWeightPlusOffset() << std::endl;
                 forward_heap.Insert(source_phantom.reverse_node_id,
                                     total_distance_to_reverse -
                                         source_phantom.GetReverseWeightPlusOffset(),
