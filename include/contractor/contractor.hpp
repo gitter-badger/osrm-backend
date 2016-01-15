@@ -878,6 +878,12 @@ class Contractor
                     {
                         if (RUNSIMULATION)
                         {
+                            // make sure to prune better, but keep inserting this loop if it should
+                            // still be the best
+                            // CAREFUL: This only works due to the independent node-setting. This
+                            // guarantees that source is not connected to another node that is
+                            // contracted
+                            node_weights[source] = loop_weight + 1;
                             BOOST_ASSERT(stats != nullptr);
                             stats->edges_added_count += 2;
                             stats->original_edges_added_count +=
@@ -885,6 +891,11 @@ class Contractor
                         }
                         else
                         {
+                            // CAREFUL: This only works due to the independent node-setting. This
+                            // guarantees that source is not connected to another node that is
+                            // contracted
+                            node_weights[source] = loop_weight + 1;
+                            node_weights[source] = loop_weight; // make sure to prune better
                             inserted_edges.emplace_back(
                                 source, target, loop_weight,
                                 out_data.originalEdges + in_data.originalEdges, node, SHORTCUT_ARC,
@@ -910,7 +921,8 @@ class Contractor
             if (RUNSIMULATION)
             {
                 const int constexpr SIMULATION_SEARCH_SPACE_SIZE = 1000;
-                Dijkstra(max_distance, number_of_targets, SIMULATION_SEARCH_SPACE_SIZE, *data, node);
+                Dijkstra(max_distance, number_of_targets, SIMULATION_SEARCH_SPACE_SIZE, *data,
+                         node);
             }
             else
             {
