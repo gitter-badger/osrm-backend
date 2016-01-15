@@ -90,9 +90,18 @@ int Prepare::Run()
     {
         ReadNodeLevels(node_levels);
     }
+
+    util::SimpleLogger().Write() << "Reading node weights.";
+    std::vector<EdgeWeight> node_weights;
+    std::string node_file_name = config.osrm_input_path.string() + ".enw";
+    if (util::deserializeVector(node_file_name, node_weights))
+        util::SimpleLogger().Write() << "Done reading node weights.";
+    else
+        util::SimpleLogger().Write() << "Failed reading node weights.";
+
     util::DeallocatingVector<QueryEdge> contracted_edge_list;
-    ContractGraph(max_edge_id, edge_based_edge_list, contracted_edge_list, is_core_node,
-                  node_levels);
+    ContractGraph(max_edge_id, edge_based_edge_list, contracted_edge_list, std::move(node_weights),
+                  is_core_node, node_levels);
     TIMER_STOP(contraction);
 
     util::SimpleLogger().Write() << "Contraction took " << TIMER_SEC(contraction) << " sec";
@@ -415,13 +424,15 @@ void Prepare::ContractGraph(
     const unsigned max_edge_id,
     util::DeallocatingVector<extractor::EdgeBasedEdge> &edge_based_edge_list,
     util::DeallocatingVector<QueryEdge> &contracted_edge_list,
+    std::vector<EdgeWeight> &&node_weights,
     std::vector<bool> &is_core_node,
     std::vector<float> &inout_node_levels) const
 {
     std::vector<float> node_levels;
     node_levels.swap(inout_node_levels);
 
-    Contractor contractor(max_edge_id + 1, edge_based_edge_list, std::move(node_levels));
+    Contractor contractor(max_edge_id + 1, edge_based_edge_list, std::move(node_levels),
+                          std::move(node_weights));
     contractor.Run(config.core_factor);
     contractor.GetEdges(contracted_edge_list);
     contractor.GetCoreMarker(is_core_node);

@@ -267,19 +267,24 @@ int Extractor::run()
         std::vector<EdgeBasedNode> node_based_edge_list;
         util::DeallocatingVector<EdgeBasedEdge> edge_based_edge_list;
         std::vector<bool> node_is_startpoint;
-        std::vector<bool> node_represents_oneway_street;
+        std::vector<EdgeWeight> edge_based_node_weights;
         std::vector<QueryNode> internal_to_external_node_map;
-        auto graph_size =
-            BuildEdgeExpandedGraph(internal_to_external_node_map, node_based_edge_list,
-                                   node_is_startpoint, edge_based_edge_list);
+        auto graph_size = BuildEdgeExpandedGraph(internal_to_external_node_map,
+                                                 node_based_edge_list, node_is_startpoint,
+                                                 edge_based_node_weights, edge_based_edge_list);
 
         auto number_of_node_based_nodes = graph_size.first;
         auto max_edge_id = graph_size.second;
 
         TIMER_STOP(expansion);
 
-        util::SimpleLogger().Write() << "Remembering One-Ways for " << node_based_edge_list.size()
-                                     << " edge-based-nodes.";
+        util::SimpleLogger().Write() << "Saving edge-based node weights to file.";
+        TIMER_START(timer_write_node_weights);
+        util::serializeVector(config.edge_based_node_weights_output_path,
+                                  edge_based_node_weights);
+        TIMER_STOP(timer_write_node_weights);
+        util::SimpleLogger().Write() << "Done writing. (" << TIMER_SEC(timer_write_node_weights)
+                                     << ")";
 
         util::SimpleLogger().Write() << "building r-tree ...";
         TIMER_START(rtree);
@@ -492,6 +497,7 @@ std::pair<std::size_t, std::size_t>
 Extractor::BuildEdgeExpandedGraph(std::vector<QueryNode> &internal_to_external_node_map,
                                   std::vector<EdgeBasedNode> &node_based_edge_list,
                                   std::vector<bool> &node_is_startpoint,
+                                  std::vector<EdgeWeight> &edge_based_node_weights,
                                   util::DeallocatingVector<EdgeBasedEdge> &edge_based_edge_list)
 {
     lua_State *lua_state = luaL_newstate();
@@ -532,6 +538,7 @@ Extractor::BuildEdgeExpandedGraph(std::vector<QueryNode> &internal_to_external_n
     edge_based_graph_factory.GetEdgeBasedEdges(edge_based_edge_list);
     edge_based_graph_factory.GetEdgeBasedNodes(node_based_edge_list);
     edge_based_graph_factory.GetStartPointMarkers(node_is_startpoint);
+    edge_based_graph_factory.GetEdgeBasedNodeWeights(edge_based_node_weights);
     auto max_edge_id = edge_based_graph_factory.GetHighestEdgeID();
 
     const std::size_t number_of_node_based_nodes = node_based_graph->GetNumberOfNodes();

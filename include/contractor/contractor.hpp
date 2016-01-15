@@ -145,8 +145,11 @@ class Contractor
     }
 
     template <class ContainerT>
-    Contractor(int nodes, ContainerT &input_edge_list, std::vector<float> &&node_levels_)
-        : node_levels(std::move(node_levels_))
+    Contractor(int nodes,
+               ContainerT &input_edge_list,
+               std::vector<float> &&node_levels_,
+               std::vector<EdgeWeight> &&node_weights_)
+        : node_levels(std::move(node_levels_)), node_weights(std::move(node_weights_))
     {
         std::vector<ContractorEdge> edges;
         edges.reserve(input_edge_list.size() * 2);
@@ -359,6 +362,7 @@ class Contractor
 
                 // Create new priority array
                 std::vector<float> new_node_priority(remaining_nodes.size());
+                std::vector<EdgeWeight> new_node_weights(remaining_nodes.size());
                 // this map gives the old IDs from the new ones, necessary to get a consistent graph
                 // at the end of contraction
                 orig_node_id_from_new_node_id_map.resize(remaining_nodes.size());
@@ -371,6 +375,8 @@ class Contractor
                     auto &node = remaining_nodes[new_node_id];
                     BOOST_ASSERT(node_priorities.size() > node.id);
                     new_node_priority[new_node_id] = node_priorities[node.id];
+                    BOOST_ASSERT(node_weights.size() > node.id);
+                    new_node_weights[new_node_id] = node_weights[node.id];
                 }
 
                 // build forward and backward renumbering map and remap ids in remaining_nodes
@@ -419,8 +425,11 @@ class Contractor
                 // Replace old priorities array by new one
                 node_priorities.swap(new_node_priority);
                 // Delete old node_priorities vector
+                //Due to the scope, these should get cleared automatically? @daniel-j-h do you agree?
                 new_node_priority.clear();
                 new_node_priority.shrink_to_fit();
+
+                node_weights.swap( new_node_weights );
                 // old Graph is removed
                 contractor_graph.reset();
 
@@ -765,7 +774,7 @@ class Contractor
     inline void Dijkstra(const int max_distance,
                          const unsigned number_of_targets,
                          const int maxNodes,
-                         ContractorThreadData & data,
+                         ContractorThreadData &data,
                          const NodeID middleNode)
     {
 
@@ -873,33 +882,33 @@ class Contractor
                         // the self loop can be pruned as well
                         // Check for Self Loops
                         const int this_loop_distance = in_data.distance + out_data.distance;
-                        const auto self_loop_distance =
-                            FindSelfLoopDistance(source, this_loop_distance, *data);
-                        if (self_loop_distance == this_loop_distance)
+                        if (this_loop_distance < node_weights[node])
                         {
-                            if (RUNSIMULATION)
+                            if (this_loop_distance == FindSelfLoopDistance(source,this_loop_distance,*data))
                             {
-                                BOOST_ASSERT(stats != nullptr);
-                                stats->edges_added_count += 2;
-                                stats->original_edges_added_count +=
-                                    2 * (out_data.originalEdges + in_data.originalEdges);
-                            }
-                            else
-                            {
-                                inserted_edges.emplace_back(
-                                    source, target, this_loop_distance,
-                                    out_data.originalEdges + in_data.originalEdges, node,
-                                    SHORTCUT_ARC, FORWARD_DIRECTION_ENABLED,
-                                    REVERSE_DIRECTION_DISABLED);
+                                if (RUNSIMULATION)
+                                {
+                                    BOOST_ASSERT(stats != nullptr);
+                                    stats->edges_added_count += 2;
+                                    stats->original_edges_added_count +=
+                                        2 * (out_data.originalEdges + in_data.originalEdges);
+                                }
+                                else
+                                {
+                                    inserted_edges.emplace_back(
+                                        source, target, this_loop_distance,
+                                        out_data.originalEdges + in_data.originalEdges, node,
+                                        SHORTCUT_ARC, FORWARD_DIRECTION_ENABLED,
+                                        REVERSE_DIRECTION_DISABLED);
 
-                                inserted_edges.emplace_back(
-                                    target, source, this_loop_distance,
-                                    out_data.originalEdges + in_data.originalEdges, node,
-                                    SHORTCUT_ARC, FORWARD_DIRECTION_DISABLED,
-                                    REVERSE_DIRECTION_ENABLED);
+                                    inserted_edges.emplace_back(
+                                        target, source, this_loop_distance,
+                                        out_data.originalEdges + in_data.originalEdges, node,
+                                        SHORTCUT_ARC, FORWARD_DIRECTION_DISABLED,
+                                        REVERSE_DIRECTION_ENABLED);
+                                }
                             }
                         }
-                        break;
                     }
                 }
             }
@@ -1150,6 +1159,13 @@ class Contractor
     stxxl::vector<QueryEdge> external_edge_list;
     std::vector<NodeID> orig_node_id_from_new_node_id_map;
     std::vector<float> node_levels;
+
+    // A list of weights for every node in the graph.
+    // The weight represents the cost for a u-turn on the segment in the base-graph in addition to
+    // its traversal.
+    // During contraction, self-loops are checked against this node weight to ensure that necessary
+    // self-loops are added.
+    std::vector<EdgeWeight> node_weights;
     std::vector<bool> is_core_node;
     util::XORFastHash fast_hash;
 };
