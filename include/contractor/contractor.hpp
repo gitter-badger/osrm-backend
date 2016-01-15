@@ -425,11 +425,12 @@ class Contractor
                 // Replace old priorities array by new one
                 node_priorities.swap(new_node_priority);
                 // Delete old node_priorities vector
-                //Due to the scope, these should get cleared automatically? @daniel-j-h do you agree?
+                // Due to the scope, these should get cleared automatically? @daniel-j-h do you
+                // agree?
                 new_node_priority.clear();
                 new_node_priority.shrink_to_fit();
 
-                node_weights.swap( new_node_weights );
+                node_weights.swap(new_node_weights);
                 // old Graph is removed
                 contractor_graph.reset();
 
@@ -760,17 +761,6 @@ class Contractor
         }
     }
 
-    inline int FindSelfLoopDistance(const NodeID node, int max_distance, ContractorThreadData &data)
-    {
-        auto &heap = data.heap;
-        heap.Clear();
-        heap.Insert(node, INVALID_EDGE_WEIGHT,
-                    ContractorHeapData(0, true)); // mark the node itself as a target
-        RelaxNode(node, SPECIAL_NODEID, 0, heap); // add its neighbors to the heap
-        Dijkstra(max_distance, 1, 1000, data, SPECIAL_NODEID);
-        return heap.GetKey(node);
-    }
-
     inline void Dijkstra(const int max_distance,
                          const unsigned number_of_targets,
                          const int maxNodes,
@@ -866,53 +856,6 @@ class Contractor
                 continue;
             }
 
-            // Check for Potential Self-Loops, only add if self-loop is the shortest loop
-            for (auto out_edge : contractor_graph->GetAdjacentEdgeRange(node))
-            {
-                const auto &out_data = contractor_graph->GetEdgeData(out_edge);
-                if (out_data.forward)
-                {
-                    const NodeID target = contractor_graph->GetTarget(out_edge);
-                    if (source == target)
-                    {
-                        // TODO we could prune some of these self-loops if we new about the weight
-                        // along the
-                        // edge represented by `node` itself. If the self-loop is longer than the
-                        // edge,
-                        // the self loop can be pruned as well
-                        // Check for Self Loops
-                        const int this_loop_distance = in_data.distance + out_data.distance;
-                        if (this_loop_distance < node_weights[node])
-                        {
-                            if (this_loop_distance == FindSelfLoopDistance(source,this_loop_distance,*data))
-                            {
-                                if (RUNSIMULATION)
-                                {
-                                    BOOST_ASSERT(stats != nullptr);
-                                    stats->edges_added_count += 2;
-                                    stats->original_edges_added_count +=
-                                        2 * (out_data.originalEdges + in_data.originalEdges);
-                                }
-                                else
-                                {
-                                    inserted_edges.emplace_back(
-                                        source, target, this_loop_distance,
-                                        out_data.originalEdges + in_data.originalEdges, node,
-                                        SHORTCUT_ARC, FORWARD_DIRECTION_ENABLED,
-                                        REVERSE_DIRECTION_DISABLED);
-
-                                    inserted_edges.emplace_back(
-                                        target, source, this_loop_distance,
-                                        out_data.originalEdges + in_data.originalEdges, node,
-                                        SHORTCUT_ARC, FORWARD_DIRECTION_DISABLED,
-                                        REVERSE_DIRECTION_ENABLED);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             heap.Clear();
             heap.Insert(source, 0, ContractorHeapData());
             int max_distance = 0;
@@ -926,8 +869,35 @@ class Contractor
                     continue;
                 }
                 const NodeID target = contractor_graph->GetTarget(out_edge);
-                if (target == node)
+                if (node == target)
                     continue;
+                if (target == source)
+                {
+                    EdgeWeight loop_weight = in_data.distance + out_data.distance;
+                    if (loop_weight < node_weights[node])
+                    {
+                        if (RUNSIMULATION)
+                        {
+                            BOOST_ASSERT(stats != nullptr);
+                            stats->edges_added_count += 2;
+                            stats->original_edges_added_count +=
+                                2 * (out_data.originalEdges + in_data.originalEdges);
+                        }
+                        else
+                        {
+                            inserted_edges.emplace_back(
+                                source, target, loop_weight,
+                                out_data.originalEdges + in_data.originalEdges, node, SHORTCUT_ARC,
+                                FORWARD_DIRECTION_ENABLED, REVERSE_DIRECTION_DISABLED);
+
+                            inserted_edges.emplace_back(
+                                target, source, loop_weight,
+                                out_data.originalEdges + in_data.originalEdges, node, SHORTCUT_ARC,
+                                FORWARD_DIRECTION_DISABLED, REVERSE_DIRECTION_ENABLED);
+                        }
+                    }
+                    continue;
+                }
                 const int path_distance = in_data.distance + out_data.distance;
                 max_distance = std::max(max_distance, path_distance);
                 if (!heap.WasInserted(target))
@@ -939,11 +909,13 @@ class Contractor
 
             if (RUNSIMULATION)
             {
-                Dijkstra(max_distance, number_of_targets, 1000, *data, node);
+                const int constexpr SIMULATION_SEARCH_SPACE_SIZE = 1000;
+                Dijkstra(max_distance, number_of_targets, SIMULATION_SEARCH_SPACE_SIZE, *data, node);
             }
             else
             {
-                Dijkstra(max_distance, number_of_targets, 2000, *data, node);
+                const int constexpr FULL_SEARCH_SPACE_SIZE = 2000;
+                Dijkstra(max_distance, number_of_targets, FULL_SEARCH_SPACE_SIZE, *data, node);
             }
             for (auto out_edge : contractor_graph->GetAdjacentEdgeRange(node))
             {
