@@ -98,12 +98,8 @@ void EdgeBasedGraphFactory::InsertEdgeBasedNode(const NodeID node_u, const NodeI
         return;
     }
 
-    // oneway streets always require this self-loop. Other streets only if a u-turn plus traversal
-    // of the street takes longer than the loop
-    m_edge_based_node_weights.push_back(
-        reverse_data.edge_id == SPECIAL_NODEID
-            ? INVALID_EDGE_WEIGHT
-            : (forward_data.distance + speed_profile.u_turn_penalty));
+    if (forward_data.edge_id != SPECIAL_NODEID && reverse_data.edge_id == SPECIAL_NODEID)
+        m_edge_based_node_weights[forward_data.edge_id] = INVALID_EDGE_WEIGHT;
 
     BOOST_ASSERT(m_compressed_edge_container.HasEntryForID(edge_id_1) ==
                  m_compressed_edge_container.HasEntryForID(edge_id_2));
@@ -284,6 +280,11 @@ unsigned EdgeBasedGraphFactory::RenumberEdges()
                 continue;
             }
 
+            // oneway streets always require this self-loop. Other streets only if a u-turn plus
+            // traversal
+            // of the street takes longer than the loop
+            m_edge_based_node_weights.push_back(edge_data.distance + speed_profile.u_turn_penalty);
+
             BOOST_ASSERT(numbered_edges_count < m_node_based_graph->GetNumberOfEdges());
             edge_data.edge_id = numbered_edges_count;
             ++numbered_edges_count;
@@ -335,7 +336,7 @@ void EdgeBasedGraphFactory::GenerateEdgeExpandedNodes()
     }
 
     BOOST_ASSERT(m_edge_based_node_list.size() == m_edge_based_node_is_startpoint.size());
-    BOOST_ASSERT(m_edge_based_node_list.size() == m_edge_based_node_weights.size());
+    BOOST_ASSERT(m_max_edge_id+1 == m_edge_based_node_weights.size());
 
     util::SimpleLogger().Write() << "Generated " << m_edge_based_node_list.size()
                                  << " nodes in edge-expanded graph";
