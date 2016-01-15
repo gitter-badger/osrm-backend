@@ -140,3 +140,4 @@ script:
   - ./util-tests
   - cd ..
   - cucumber -p verify
+  - cat test/osrm-routed.log
